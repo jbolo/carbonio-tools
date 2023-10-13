@@ -116,6 +116,22 @@ function count_mailbox_user()
    done
 }
 
+function count_mailbox_usercarbonio()
+{
+   for j in `cat ${DIRREMOTE}/emails.txt | egrep -v "^(spam|ham)"`; do
+      log_info "Analizing account: ${j}"
+      total=0;
+
+      for i in $( zmmailbox -z -m "$j" gaf | awk '{print $4}' | egrep -o "[0-9]+" ); do
+         total=$((total + i ));
+      done;
+      log_info "Total Q    for ${j} = ${total}";
+
+      size=`zmmailbox -z -m "$j" gms`;
+      log_info "Total size for ${j} = ${size}";
+   done
+}
+
 function export_account()
 {
    mkdir -p "${DIRLOG}"
@@ -245,10 +261,10 @@ function import_mailbox()
       zmmailbox -z -m ${email} -t 0 postRestURL "/?fmt=tgz&resolve=skip" ${DIRREMOTEMAILBOX}/$email.tgz ;
       log_info "${email} -- finished " ;
    done
-   count_mailbox_user
+   count_mailbox_usercarbonio
 }
 
-while getopts ":eith" options; do
+while getopts ":eitmh" options; do
    case "${options}" in
       e) # Export zimbra mailbox
          export_account
