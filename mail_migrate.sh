@@ -16,15 +16,17 @@ DIRAPP=`pwd`
 DIRLOG="${DIRAPP}/log"
 LOGFILE="${DIRLOG}/migracion_"`date '+%Y%m%d%H%M%S'`".log"
 LOGLEVEL="INFO"
-ZIMBRA_USER="zimbra"
+
 # One Domain to work(optional)
 DOMAIN=""
 
+ZIMBRA_USER="zimbra"
 DIRBACKUP="${DIRAPP}/zmigrate"
 DIRUSERPASS="${DIRBACKUP}/userpass"
 DIRUSERDATA="${DIRBACKUP}/userdata"
 DIRMAILBOX="${DIRBACKUP}/mailbox"
 
+ZEXTRAS_USER="zextras"
 SSHREMOTE="root@1.1.1.1"
 DIRREMOTE="/opt/backups/zmigrate"
 DIRREMOTEUSERPASS="${DIRREMOTE}/userpass"
@@ -83,7 +85,7 @@ function usage()
 function validate_zextras_user()
 {
    user=`whoami`
-   if [[ ! "$user" == "${ZIMBRA_USER}" ]]; then
+   if [[ ! "$user" == "${ZEXTRAS_USER}" ]]; then
       log_error "The actually user is not zextras: ${user}"
       exit 1
    fi
