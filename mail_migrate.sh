@@ -140,6 +140,8 @@ function export_account()
          log_error "Domain ${DOMAIN} not exist."
          exit 1
       fi
+      log_info "Using domain: ${DOMAIN}"
+      echo "${DOMAIN}" > "${DIRBACKUP}/domains.txt"
    fi
 
    log_info "zmprov -l gaa ${DOMAIN} > emails.txt"
