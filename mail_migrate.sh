@@ -109,9 +109,9 @@ function count_mailbox_user()
       for i in $( zmmailbox -z -m "$j" gaf | awk '{print $4}' | egrep -o "[0-9]+" ); do
          total=$((total + i ));
       done;
-          log_info "Total Q    for ${j} = ${total}";
+      log_info "Total Q    for ${j} = ${total}";
 
-          size=`zmmailbox -z -m "$j" gms`;
+      size=`zmmailbox -z -m "$j" gms`;
       log_info "Total size for ${j} = ${size}";
    done
 }
@@ -218,7 +218,7 @@ function import_account()
       shadowpass=`cat ${DIRREMOTEUSERPASS}/$i.shadow`
 
       log_info "Creating account"
-      carbonio prov ca $i CHANGEme cn "$givenname" displayName "$displayNnme" givenName "$givenname"
+      carbonio prov ca $i CHANGEme cn "$givenname" displayName "$displayname" givenName "$givenname"
       log_info "Updating account password"
       carbonio prov ma $i userPassword "$shadowpass"
    done
@@ -229,14 +229,23 @@ function import_account()
 
 }
 
+
 function import_mailbox()
 {
+   log_info "   Important Note:"
+   log_info ""
+   log_info "Few things you should keep in mind before starting the mailbox export/import process:"
+   log_info "1. Set the socket timeout high (i.e. zmlocalconfig -e socket_so_timeout=3000000; zmlocalconfig -reload)"
+   log_info "2. Check if you have any attachment limits. If you have increase the value during the migration period"
+   log_info "3. Set Public Service Host Name & Public Service Protocol to avoid any error/issue like below one"
+
    log_info "Importing mailbox"
    for email in `cat ${DIRREMOTE}/emails.txt`; do
       log_info "zmmailbox -z -m ${email}..."
       zmmailbox -z -m ${email} -t 0 postRestURL "/?fmt=tgz&resolve=skip" ${DIRREMOTEMAILBOX}/$email.tgz ;
       log_info "${email} -- finished " ;
    done
+   count_mailbox_user
 }
 
 while getopts ":eith" options; do
@@ -245,8 +254,10 @@ while getopts ":eith" options; do
          export_account
          export_mailbox
          exit;;
-      i) # Import mailbox to carbonio
+      i) # Import account to carbonio
          import_account
+         exit;;
+      m) # Import mailbox to carbonio
          import_mailbox
          exit;;
       t) # Transfer data by rsync
