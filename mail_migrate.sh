@@ -16,7 +16,11 @@ DIRAPP=`pwd`
 DIRLOG="${DIRAPP}/log"
 LOGFILE="${DIRLOG}/migracion_"`date '+%Y%m%d%H%M%S'`".log"
 LOGLEVEL="INFO"
-ZIMBRA_USER="zextras"
+ZIMBRA_USER="zimbra"
+# One Domain to work(optional)
+DOMAIN=""
+SSHREMOTE="root@1.1.1.1"
+DIRREMOTE="/opt/backups/zmigrate"
 
 DIRBACKUP="${DIRAPP}/zmigrate"
 DIRUSERPASS="${DIRBACKUP}/userpass"
@@ -82,14 +86,17 @@ function validate_zextras_user()
 
 function count_mailbox_user()
 {
-   for j in $( zmprov -l gaa | egrep -v "^(spam|ham)"); do
+   for j in `cat ${DIRBACKUP}/emails.txt | egrep -v "^(spam|ham)"`; do
+      log_info "Analizing account: ${j}"
       total=0;
 
       for i in $( zmmailbox -z -m "$j" gaf | awk '{print $4}' | egrep -o "[0-9]+" ); do
          total=$((total + i ));
       done;
+          log_info "Total Q    for ${j} = ${total}";
 
-      log_info "Total for ${j} = ${total}";
+          size=`zmmailbox -z -m "$j" gms`;
+      log_info "Total size for ${j} = ${size}";
    done
 }
 
@@ -112,8 +119,9 @@ function export_account()
    log_info "zmprov -l gad > domains.txt"
    zmprov -l gad > "${DIRBACKUP}/domains.txt"
 
-   log_info "zmprov -l gaa > emails.txt"
-   zmprov -l gaa > "${DIRBACKUP}/emails.txt"
+   log_info "zmprov -l gaa ${DOMAIN} > emails.txt"
+   zmprov -l gaa ${DOMAIN} > "${DIRBACKUP}/emails.txt"
+   cat "${DIRBACKUP}/emails.txt"
 
    mkdir -p ${DIRUSERPASS}
    log_info "Exporting user password in: ${DIRUSERPASS}"
@@ -129,12 +137,11 @@ function export_account()
       zmprov ga ${i}  | grep -i Name: > ${DIRUSERDATA}/${i}.txt ;
    done
 
-   count_mailbox_user
-
 }
 
 function export_mailbox()
 {
+   count_mailbox_user
    mkdir -p ${DIRMAILBOX}
    log_info "Exporting mailbox in : ${DIRMAILBOX}"
    for email in `cat ${DIRBACKUP}/emails.txt`; do
@@ -144,13 +151,18 @@ function export_mailbox()
    done
 }
 
+function transfer_data()
+{
+   rsync -avp ${DIRBACKUP}/* ${SSHREMOTE}:${DIRREMOTE}/ --log-file=${LOGFILE}
+}
+
 function import_account()
 {
    validate_zextras_user
    # ... Pending
 }
 
-while getopts ":eih" options; do
+while getopts ":eith" options; do
    case "${options}" in
       e) # Export zimbra mailbox
          export_account
@@ -158,6 +170,9 @@ while getopts ":eih" options; do
          exit;;
       i) # Import mailbox to carbonio
          import_account
+         exit;;
+      t) # Transfer data by rsync
+         transfer_data
          exit;;
       *) # Invalid option
          echo "Invalid option: "$1
