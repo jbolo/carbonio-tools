@@ -29,7 +29,10 @@ DIRMAILBOX="${DIRBACKUP}/mailbox"
 
 ZEXTRAS_USER="zextras"
 SSHREMOTE="root@1.1.1.1"
-DIRREMOTE="/opt/backups/zmigrate"
+SSHPASSWORD="abc123"
+SSHDIR="/home/sftp_dir"
+# DIRREMOTE is
+DIRREMOTE="/home/sftp_dir/zmigrate_20231022130000"
 DIRREMOTEUSERPASS="${DIRREMOTE}/userpass"
 DIRREMOTEUSERDATA="${DIRREMOTE}/userdata"
 DIRREMOTEMAILBOX="${DIRREMOTE}/mailbox"
@@ -228,8 +231,8 @@ function transfer_data()
    else
       DIR_BACKUP_WORK=$1
    fi
-   log_info "rsync -avp ${DIR_BACKUP_WORK}/* ${SSHREMOTE}:${DIRREMOTE}/ --log-file=${LOGFILE}"
-   rsync -avp ${DIR_BACKUP_WORK}/* ${SSHREMOTE}:${DIRREMOTE}/ --log-file=${LOGFILE}
+   log_info "sshpass -p \"${SSHPASSWORD}\" rsync -avp ${DIR_BACKUP_WORK}/* ${SSHREMOTE}:${SSHDIR} --log-file=${LOGFILE}"
+   sshpass -p ${SSHPASSWORD} rsync -avp ${DIR_BACKUP_WORK}/* ${SSHREMOTE}:${SSHDIR} --log-file=${LOGFILE}
 }
 
 function import_account()
