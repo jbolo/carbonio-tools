@@ -231,8 +231,8 @@ function transfer_data()
    else
       DIR_BACKUP_WORK=$1
    fi
-   log_info "sshpass -p \"${SSHPASSWORD}\" rsync -avp ${DIR_BACKUP_WORK}/* ${SSHREMOTE}:${SSHDIR} --log-file=${LOGFILE}"
-   sshpass -p ${SSHPASSWORD} rsync -avp ${DIR_BACKUP_WORK}/* ${SSHREMOTE}:${SSHDIR} --log-file=${LOGFILE}
+   log_info "sshpass -p \"${SSHPASSWORD}\" rsync -avp ${DIR_BACKUP_WORK} ${SSHREMOTE}:${SSHDIR} --log-file=${LOGFILE}"
+   sshpass -p ${SSHPASSWORD} rsync -avp ${DIR_BACKUP_WORK} ${SSHREMOTE}:${SSHDIR} --log-file=${LOGFILE}
 }
 
 function import_account()
