@@ -14,14 +14,15 @@
 #################################
 DIRAPP=`pwd`
 DIRLOG="${DIRAPP}/log"
-LOGFILE="${DIRLOG}/migracion_"`date '+%Y%m%d%H%M%S'`".log"
+TODAY_LINE=`date '+%Y%m%d%H%M%S'`
+LOGFILE="${DIRLOG}/migracion_${TODAY_LINE}.log"
 LOGLEVEL="INFO"
 
 # One Domain to work(optional)
 DOMAIN=""
 
 ZIMBRA_USER="zimbra"
-DIRBACKUP="${DIRAPP}/zmigrate"
+DIRBACKUP="${DIRAPP}/zmigrate_${TODAY_LINE}"
 DIRUSERPASS="${DIRBACKUP}/userpass"
 DIRUSERDATA="${DIRBACKUP}/userdata"
 DIRMAILBOX="${DIRBACKUP}/mailbox"
@@ -68,6 +69,19 @@ function log_error {
    fi
 }
 
+function begin_process()
+{
+   log_info ""
+   log_info "################# $1 ###################"
+}
+
+function end_shell()
+{
+  last_date=`date +"%Y%m%d%H%M%S"`
+  log_info "End Process .. $last_date"
+  exit $1
+}
+
 function usage()
 {
    echo "Script to mail migration - Zimbra to Carbonio."
@@ -87,7 +101,7 @@ function validate_zextras_user()
    user=`whoami`
    if [[ ! "$user" == "${ZEXTRAS_USER}" ]]; then
       log_error "The actually user is not zextras: ${user}"
-      exit 1
+      end_shell 1
    fi
 }
 
@@ -96,12 +110,13 @@ function validate_zimbra_user()
    user=`whoami`
    if [[ ! "$user" == "${ZIMBRA_USER}" ]]; then
       log_error "The actually user is not zimbra: ${user}"
-      exit 1
+      end_shell 1
    fi
 }
 
 function count_mailbox_user()
 {
+   begin_process "Getting mailbox user details"
    for j in `cat ${DIRBACKUP}/emails.txt | egrep -v "^(spam|ham)"`; do
       log_info "Analizing account: ${j}"
       total=0;
@@ -136,7 +151,7 @@ function export_account()
 {
    mkdir -p "${DIRLOG}"
    validate_zimbra_user
-   log_info "Starting process of account export..."
+   begin_process "Starting process of account export"
 
    version=`zmcontrol -v`
    log_info "${version}"
@@ -148,6 +163,7 @@ function export_account()
    mkdir -p ${DIRBACKUP}
    cd ${DIRBACKUP}
 
+   begin_process "Getting domains"
    log_info "zmprov -l gad > domains.txt"
    zmprov -l gad > "${DIRBACKUP}/domains.txt"
 
@@ -160,21 +176,30 @@ function export_account()
       echo "${DOMAIN}" > "${DIRBACKUP}/domains.txt"
    fi
 
+   begin_process "Getting emails"
    log_info "zmprov -l gaa ${DOMAIN} > emails.txt"
    zmprov -l gaa ${DOMAIN} > "${DIRBACKUP}/emails.txt"
    cat "${DIRBACKUP}/emails.txt"
+   q_emails=`wc -l ${DIRBACKUP}/emails.txt |awk '{print $1}'`
+   log_info "Total emails: $q_emails"
 
+   begin_process "Exporting users and password"
    mkdir -p ${DIRUSERPASS}
    log_info "Exporting user password in: ${DIRUSERPASS}"
+   count=0
    for i in `cat ${DIRBACKUP}/emails.txt`; do
-      log_info "zmprov  -l ga ${i} userPassword..."
+      let count=$count+1
+      log_info "[$count/$q_emails] zmprov  -l ga ${i} userPassword..."
       zmprov  -l ga ${i} userPassword | grep userPassword: | awk '{print $2}' > ${DIRUSERPASS}/${i}.shadow;
    done
 
+   begin_process "Exporting usersdata"
    mkdir -p ${DIRUSERDATA}
    log_info "Exporting user data in: ${DIRUSERDATA}"
+   count=0
    for i in `cat ${DIRBACKUP}/emails.txt`; do
-      log_info "zmprov ga ${i}..."
+      let count=$count+1
+      log_info "[$count/$q_emails] zmprov ga ${i}..."
       zmprov ga ${i}  | grep -i Name: > ${DIRUSERDATA}/${i}.txt ;
    done
 
@@ -184,9 +209,12 @@ function export_mailbox()
 {
    count_mailbox_user
    mkdir -p ${DIRMAILBOX}
-   log_info "Exporting mailbox in : ${DIRMAILBOX}"
+   begin_process "Exporting mailbox in : ${DIRMAILBOX}"
+   q_emails=`wc -l ${DIRBACKUP}/emails.txt |awk '{print $1}'`
+   count=0
    for email in `cat ${DIRBACKUP}/emails.txt`; do
-      log_info "zmmailbox -z -m ${email}..." ;
+      let count=$count+1
+      log_info "[$count/$q_emails] zmmailbox -z -m ${email}..." ;
       zmmailbox -z -m ${email} -t 0 getRestURL '/?fmt=tgz' > ${DIRMAILBOX}/$email.tgz ;
       log_info "${email} -- finished " ;
    done
@@ -194,6 +222,7 @@ function export_mailbox()
 
 function transfer_data()
 {
+   begin_process "Transfering backup to remote server"
    rsync -avp ${DIRBACKUP}/* ${SSHREMOTE}:${DIRREMOTE}/ --log-file=${LOGFILE}
 }
 
@@ -202,7 +231,7 @@ function import_account()
    mkdir -p "${DIRLOG}"
    validate_zextras_user
 
-   log_info "Starting process of account import..."
+   begin_process "Starting process of account import..."
 
    version=`zmcontrol -v`
    log_info "${version}"
@@ -215,8 +244,9 @@ function import_account()
    list_domain=`carbonio prov -l gad`
    log_info "${list_domain}"
 
+   begin_process "Provisioning domains"
    for i in `cat ${DIRREMOTE}/domains.txt `; do
-      log_info "Provisioning domain ${i}"
+      log_info "Domain: ${i}"
       provi=`carbonio prov cd $i zimbraAuthMech zimbra`
       log_info "${provi}"
    done
@@ -226,9 +256,13 @@ function import_account()
    list_domain=`carbonio prov -l gad`
    log_info "${list_domain}"
 
+   begin_process "Provisiong accounts"
+   q_emails=`wc -l ${DIRREMOTE}/emails.txt |awk '{print $1}'`
+   count=0
    for i in `cat ${DIRREMOTE}/emails.txt`
    do
-      log_info "Provisioning account ${i}"
+      let count=$count+1
+      log_info "[$count/$q_emails] Account ${i}"
       givenname=`grep givenName: ${DIRREMOTEUSERDATA}/$i.txt | cut -d ":" -f2`
       displayname=`grep displayName: ${DIRREMOTEUSERDATA}/$i.txt | cut -d ":" -f2`
       shadowpass=`cat ${DIRREMOTEUSERPASS}/$i.shadow`
@@ -248,6 +282,7 @@ function import_account()
 
 function import_mailbox()
 {
+   begin_process "Importing mailboxs"
    log_info "   Important Note:"
    log_info ""
    log_info "Few things you should keep in mind before starting the mailbox export/import process:"
@@ -255,9 +290,11 @@ function import_mailbox()
    log_info "2. Check if you have any attachment limits. If you have increase the value during the migration period"
    log_info "3. Set Public Service Host Name & Public Service Protocol to avoid any error/issue like below one"
 
-   log_info "Importing mailbox"
+   q_emails=`wc -l ${DIRREMOTE}/emails.txt |awk '{print $1}'`
+   count=0
    for email in `cat ${DIRREMOTE}/emails.txt`; do
-      log_info "zmmailbox -z -m ${email}..."
+      let count=$count+1
+      log_info "[$count/$q_emails] zmmailbox -z -m ${email}..."
       zmmailbox -z -m ${email} -t 0 postRestURL "/?fmt=tgz&resolve=skip" ${DIRREMOTEMAILBOX}/$email.tgz ;
       log_info "${email} -- finished " ;
    done
@@ -269,20 +306,20 @@ while getopts ":eitmh" options; do
       e) # Export zimbra mailbox
          export_account
          export_mailbox
-         exit;;
+         end_shell;;
       i) # Import account to carbonio
          import_account
-         exit;;
+         end_shell;;
       m) # Import mailbox to carbonio
          import_mailbox
-         exit;;
+         end_shell;;
       t) # Transfer data by rsync
          transfer_data
-         exit;;
+         end_shell;;
       *) # Invalid option
          echo "Invalid option: "$1
          usage
-         exit 1
+         end_shell 1
          ;;
    esac
 done
