@@ -223,7 +223,13 @@ function export_mailbox()
 function transfer_data()
 {
    begin_process "Transfering backup to remote server"
-   rsync -avp ${DIRBACKUP}/* ${SSHREMOTE}:${DIRREMOTE}/ --log-file=${LOGFILE}
+   if [ "$1" = "" ] ; then
+      DIR_BACKUP_WORK=`ls -ltr ${DIRAPP}|grep "zmigrate_"|awk '{print $9}'|tail -1`
+   else
+      DIR_BACKUP_WORK=$1
+   fi
+   log_info "rsync -avp ${DIR_BACKUP_WORK}/* ${SSHREMOTE}:${DIRREMOTE}/ --log-file=${LOGFILE}"
+   rsync -avp ${DIR_BACKUP_WORK}/* ${SSHREMOTE}:${DIRREMOTE}/ --log-file=${LOGFILE}
 }
 
 function import_account()
@@ -306,6 +312,7 @@ while getopts ":eitmh" options; do
       e) # Export zimbra mailbox
          export_account
          export_mailbox
+         # transfer_data ${DIRBACKUP}
          end_shell;;
       i) # Import account to carbonio
          import_account
