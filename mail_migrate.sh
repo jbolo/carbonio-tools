@@ -12,7 +12,14 @@
 #################################
 # Constants / global variables
 #################################
-DIRAPP=`pwd`
+PID=$$
+DIRAPP=`readlink -f $0 | xargs dirname`
+ENV_FILE="$DIRAPP/.varset"
+if [ -z "$ENV_FILE" ] ; then
+   echo ".varset file not found\n"
+   exit(1)
+. $DIRAPP/.varset
+
 DIRLOG="${DIRAPP}/log"
 TODAY_LINE=`date '+%Y%m%d%H%M%S'`
 LOGFILE="${DIRLOG}/migracion_${TODAY_LINE}.log"
@@ -28,11 +35,8 @@ DIRUSERDATA="${DIRBACKUP}/userdata"
 DIRMAILBOX="${DIRBACKUP}/mailbox"
 
 ZEXTRAS_USER="zextras"
-SSHREMOTE="root@1.1.1.1"
-SSHPASSWORD="abc123"
 SSHDIR="/home/sftp_dir"
 # DIRREMOTE is
-DIRREMOTE="/home/sftp_dir/zmigrate_20231022130000"
 DIRREMOTEUSERPASS="${DIRREMOTE}/userpass"
 DIRREMOTEUSERDATA="${DIRREMOTE}/userdata"
 DIRREMOTEMAILBOX="${DIRREMOTE}/mailbox"
@@ -83,6 +87,16 @@ function end_shell()
   last_date=`date +"%Y%m%d%H%M%S"`
   log_info "End Process .. $last_date"
   exit $1
+}
+
+function notify()
+{
+   if [ $TELEGRAM_ENABLED -eq 1 ] ; then
+      curl -X POST \
+           -H 'Content-Type: application/json' \
+           -d '{"chat_id": "${TELEGRAM_CHAT_ID}", "text": "${PROCESS_NAME}(${PID}) - $1"}' \
+           https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage
+   fi
 }
 
 function usage()
@@ -152,6 +166,7 @@ function count_mailbox_usercarbonio()
 
 function export_account()
 {
+   notify "Export account - Started"
    mkdir -p "${DIRLOG}"
    validate_zimbra_user
    begin_process "Starting process of account export"
@@ -205,12 +220,15 @@ function export_account()
       log_info "[$count/$q_emails] zmprov ga ${i}..."
       zmprov ga ${i}  | grep -i Name: > ${DIRUSERDATA}/${i}.txt ;
    done
+   notify "Export account - Terminated"
 
 }
 
 function export_mailbox()
 {
    count_mailbox_user
+
+   notify "Export mailbox - Started"
    mkdir -p ${DIRMAILBOX}
    begin_process "Exporting mailbox in : ${DIRMAILBOX}"
    q_emails=`wc -l ${DIRBACKUP}/emails.txt |awk '{print $1}'`
@@ -221,10 +239,12 @@ function export_mailbox()
       zmmailbox -z -m ${email} -t 0 getRestURL '/?fmt=tgz' > ${DIRMAILBOX}/$email.tgz ;
       log_info "${email} -- finished " ;
    done
+   notify "Export mailbox - Terminated"
 }
 
 function transfer_data()
 {
+   notify "Transfer data - Started"
    begin_process "Transfering backup to remote server"
    if [ "$1" = "" ] ; then
       DIR_BACKUP_WORK=`ls -ltr ${DIRAPP}|grep "zmigrate_"|awk '{print $9}'|tail -1`
@@ -233,10 +253,12 @@ function transfer_data()
    fi
    log_info "sshpass -p \"${SSHPASSWORD}\" rsync -avp ${DIR_BACKUP_WORK} ${SSHREMOTE}:${SSHDIR} --log-file=${LOGFILE}"
    sshpass -p ${SSHPASSWORD} rsync -avp ${DIR_BACKUP_WORK} ${SSHREMOTE}:${SSHDIR} --log-file=${LOGFILE}
+   notify "Transfer data - Terminated"
 }
 
 function import_account()
 {
+   notify "Import account - Started"
    mkdir -p "${DIRLOG}"
    validate_zextras_user
 
@@ -285,12 +307,13 @@ function import_account()
    log_info "List of Accounts:"
    list_acc=`carbonio prov -l gaa -v ${DOMAIN} | grep -e displayName`
    log_info "${list_acc}"
-
+   notify "Import account - Terminated"
 }
 
 
 function import_mailbox()
 {
+   notify "Import mailbox - Started"
    begin_process "Importing mailboxs"
    log_info "   Important Note:"
    log_info ""
@@ -307,6 +330,7 @@ function import_mailbox()
       zmmailbox -z -m ${email} -t 0 postRestURL "/?fmt=tgz&resolve=skip" ${DIRREMOTEMAILBOX}/$email.tgz ;
       log_info "${email} -- finished " ;
    done
+   notify "Import mailbox - Terminated"
    count_mailbox_usercarbonio
 }
 
@@ -315,7 +339,7 @@ while getopts ":eitmh" options; do
       e) # Export zimbra mailbox
          export_account
          export_mailbox
-         # transfer_data ${DIRBACKUP}
+         transfer_data ${DIRBACKUP}
          end_shell;;
       i) # Import account to carbonio
          import_account

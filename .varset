@@ -1,0 +1,19 @@
+####################################################
+# ENVIROMENT WORK
+####################################################
+
+PROCESS_NAME="Main"
+
+# REMOTE SERVER
+SSHREMOTE="sftp@1.1.1.1" ; export SSHREMOTE
+SSHPASSWORD="adminadmin"; export SSHPASSWORD
+
+# REMOTE DIRECTORY (only for import)
+DIRREMOTE="/home/sftp_dir/zmigrate_20231022130000"
+
+
+# NOTIFICATION
+TELEGRAM_ENABLED=1
+TELEGRAM_TOKEN="123456:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" ; export TELEGRAM_TOKEN
+TELEGRAM_CHAT_ID="-12345678912" ; export TELEGRAM_CHAT_ID
+
