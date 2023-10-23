@@ -106,7 +106,7 @@ function notify()
       curl -X POST \
            -H 'Content-Type: application/json' \
            -d @${DIRLOG}/not.txt \
-           https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage -v
+           https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage
       del_file $DIRLOG/not.txt
    fi
 }
