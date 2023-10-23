@@ -17,7 +17,8 @@ DIRAPP=`readlink -f $0 | xargs dirname`
 ENV_FILE="$DIRAPP/.varset"
 if [ -z "$ENV_FILE" ] ; then
    echo ".varset file not found\n"
-   exit(1)
+   exit 1
+fi
 . $DIRAPP/.varset
 
 DIRLOG="${DIRAPP}/log"
@@ -84,18 +85,29 @@ function begin_process()
 
 function end_shell()
 {
-  last_date=`date +"%Y%m%d%H%M%S"`
-  log_info "End Process .. $last_date"
-  exit $1
+   last_date=`date +"%Y%m%d%H%M%S"`
+   log_info "End Process .. $last_date"
+   exit $1
+}
+
+function del_file()
+{
+   file_name=$1
+   if [ -s $file_name ] || [ ! -z $file_name ] || [ -f $file_name ] ; then
+      rm -f $file_name
+   fi
 }
 
 function notify()
 {
    if [ $TELEGRAM_ENABLED -eq 1 ] ; then
+      message=$1
+      echo "{\"chat_id\": "${TELEGRAM_CHAT_ID}", \"text\": \""${PROCESS_NAME}":"${PID}"|"${message}"\"}" > $DIRLOG/not.txt
       curl -X POST \
            -H 'Content-Type: application/json' \
-           -d '{"chat_id": "${TELEGRAM_CHAT_ID}", "text": "${PROCESS_NAME}(${PID}) - $1"}' \
-           https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage
+           -d @${DIRLOG}/not.txt \
+           https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage -v
+      del_file $DIRLOG/not.txt
    fi
 }
 
