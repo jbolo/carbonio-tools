@@ -150,12 +150,12 @@ function count_mailbox_user()
       log_info "Analizing account: ${j}"
       total=0;
 
-      for i in $( zmmailbox -z -m "$j" gaf | awk '{print $4}' | egrep -o "[0-9]+" ); do
+      for i in `${PATH_BIN_ZIMBRA}/zmmailbox -z -m "$j" gaf | awk '{print $4}' | egrep -o "[0-9]+"`; do
          total=$((total + i ));
       done;
       log_info "Total Q    for ${j} = ${total}";
 
-      size=`zmmailbox -z -m "$j" gms`;
+      size=`${PATH_BIN_ZIMBRA}/zmmailbox -z -m "$j" gms`;
       log_info "Total size for ${j} = ${size}";
    done
 }
@@ -166,12 +166,12 @@ function count_mailbox_usercarbonio()
       log_info "Analizing account: ${j}"
       total=0;
 
-      for i in $( zmmailbox -z -m "$j" gaf | awk '{print $4}' | egrep -o "[0-9]+" ); do
+      for i in `${PATH_BIN_ZIMBRA}/zmmailbox -z -m "$j" gaf | awk '{print $4}' | egrep -o "[0-9]+"`; do
          total=$((total + i ));
       done;
       log_info "Total Q    for ${j} = ${total}";
 
-      size=`zmmailbox -z -m "$j" gms`;
+      size=`${PATH_BIN_ZIMBRA}/zmmailbox -z -m "$j" gms`;
       log_info "Total size for ${j} = ${size}";
    done
 }
@@ -194,11 +194,11 @@ function export_account()
    cd ${DIRBACKUP}
 
    begin_process "Getting domains"
-   log_info "zmprov -l gad > domains.txt"
-   zmprov -l gad > "${DIRBACKUP}/domains.txt"
+   log_info "${PATH_BIN_ZIMBRA}/zmprov -l gad > domains.txt"
+   ${PATH_BIN_ZIMBRA}/zmprov -l gad > "${DIRBACKUP}/domains.txt"
 
    if [[ ! "${DOMAIN}" == "" ]]; then
-      if [ ! $(grep -c "${DOMAIN}" "${DIRBACKUP}/domains.txt") -eq 1 ]; then
+      if [ ! `grep -c "${DOMAIN}" "${DIRBACKUP}/domains.txt"` -eq 1 ]; then
          log_error "Domain ${DOMAIN} not exist."
          exit 1
       fi
@@ -207,8 +207,8 @@ function export_account()
    fi
 
    begin_process "Getting emails"
-   log_info "zmprov -l gaa ${DOMAIN} > emails.txt"
-   zmprov -l gaa ${DOMAIN} > "${DIRBACKUP}/emails.txt"
+   log_info "${PATH_BIN_ZIMBRA}/zmprov -l gaa ${DOMAIN} > emails.txt"
+   ${PATH_BIN_ZIMBRA}/zmprov -l gaa ${DOMAIN} > "${DIRBACKUP}/emails.txt"
    cat "${DIRBACKUP}/emails.txt"
    q_emails=`wc -l ${DIRBACKUP}/emails.txt |awk '{print $1}'`
    log_info "Total emails: $q_emails"
@@ -219,8 +219,8 @@ function export_account()
    count=0
    for i in `cat ${DIRBACKUP}/emails.txt`; do
       let count=$count+1
-      log_info "[$count/$q_emails] zmprov  -l ga ${i} userPassword..."
-      zmprov  -l ga ${i} userPassword | grep userPassword: | awk '{print $2}' > ${DIRUSERPASS}/${i}.shadow;
+      log_info "[$count/$q_emails] ${PATH_BIN_ZIMBRA}/zmprov  -l ga ${i} userPassword..."
+      ${PATH_BIN_ZIMBRA}/zmprov  -l ga ${i} userPassword | grep userPassword: | awk '{print $2}' > ${DIRUSERPASS}/${i}.shadow;
    done
 
    begin_process "Exporting usersdata"
@@ -229,8 +229,8 @@ function export_account()
    count=0
    for i in `cat ${DIRBACKUP}/emails.txt`; do
       let count=$count+1
-      log_info "[$count/$q_emails] zmprov ga ${i}..."
-      zmprov ga ${i}  | grep -i Name: > ${DIRUSERDATA}/${i}.txt ;
+      log_info "[$count/$q_emails] ${PATH_BIN_ZIMBRA}/zmprov ga ${i}..."
+      ${PATH_BIN_ZIMBRA}/zmprov ga ${i}  | grep -i Name: > ${DIRUSERDATA}/${i}.txt ;
    done
    notify "Export account - Terminated"
 
@@ -247,8 +247,8 @@ function export_mailbox()
    count=0
    for email in `cat ${DIRBACKUP}/emails.txt`; do
       let count=$count+1
-      log_info "[$count/$q_emails] zmmailbox -z -m ${email}..." ;
-      zmmailbox -z -m ${email} -t 0 getRestURL '/?fmt=tgz' > ${DIRMAILBOX}/$email.tgz ;
+      log_info "[$count/$q_emails] ${PATH_BIN_ZIMBRA}/zmmailbox -z -m ${email}..." ;
+      ${PATH_BIN_ZIMBRA}/zmmailbox -z -m ${email} -t 0 getRestURL '/?fmt=tgz' > ${DIRMAILBOX}/$email.tgz ;
       log_info "${email} -- finished " ;
    done
    notify "Export mailbox - Terminated"
@@ -276,10 +276,10 @@ function import_account()
 
    begin_process "Starting process of account import..."
 
-   version=`zmcontrol -v`
+   version=`${PATH_BIN_ZIMBRA}/zmcontrol -v`
    log_info "${version}"
 
-   status=`zmcontrol status`
+   status=`${PATH_BIN_ZIMBRA}/zmcontrol status`
    log_info "${status}"
 
    log_info "List of Domains:"
