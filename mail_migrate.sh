@@ -83,10 +83,19 @@ function begin_process()
    log_info "################# $1 ###################"
 }
 
+function start_shell()
+{
+   log_info "#######################################"
+   trap 'end_shell 1' INT TERM EXIT ERR
+}
+
 function end_shell()
 {
    last_date=`date +"%Y%m%d%H%M%S"`
    log_info "End Process .. $last_date"
+   if [ $1 -eq 1 ] ; then
+      notify "Ocurrio un problema"
+   fi
    exit $1
 }
 
@@ -349,17 +358,21 @@ function import_mailbox()
 while getopts ":eitmh" options; do
    case "${options}" in
       e) # Export zimbra mailbox
+         start_shell
          export_account
          export_mailbox
          transfer_data ${DIRBACKUP}
          end_shell;;
       i) # Import account to carbonio
+         start_shell
          import_account
          end_shell;;
       m) # Import mailbox to carbonio
+         start_shell
          import_mailbox
          end_shell;;
       t) # Transfer data by rsync
+         start_shell
          transfer_data
          end_shell;;
       *) # Invalid option
