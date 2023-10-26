@@ -8,6 +8,7 @@ PATH_BIN_ZIMBRA="/opt/zimbra/bin"
 # REMOTE SERVER
 SSHREMOTE="sftp@1.1.1.1" ; export SSHREMOTE
 SSHPASSWORD="adminadmin"; export SSHPASSWORD
+SSHDIR="/home/sftp_dir"
 
 # REMOTE DIRECTORY (only for import)
 DIRREMOTE="/home/sftp_dir/zmigrate_20231022130000"
