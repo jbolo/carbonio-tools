@@ -45,19 +45,6 @@ if [ ! -d $DIRBACKUP ] ; then
    mkdir -p $DIRBACKUP
 fi
 
-# USAGE FUNCTION
-function usage()
-{
-   echo "Script to mail migration - Zimbra to Carbonio."
-   echo
-   echo "Usage: mail_migrate.sh [-e|i|h]"
-   echo "options:"
-   echo "e     Export mailbox Zimbra."
-   echo "i     Import mailboz Carbonio."
-   echo
-   exit 0
-}
-
 #################################
 # Main
 #################################
@@ -346,6 +333,20 @@ function import_mailbox()
 }
 
 options=("--export" "--export-account" "--export-mailbox" "--import" "--import-account" "--import-mailbox" "--transfer")
+
+function usage()
+{
+   echo "Script to mail migration - Zimbra&Carbonio."
+   echo
+   echo "Usage: mail_migrate.sh [option]"
+   echo "Options:"
+   for i in ${options[@]}
+   do
+      echo "   "$i
+   done
+   echo
+   exit 0
+}
 
 if [ -z "$1" ]; then
    usage
