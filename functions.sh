@@ -38,7 +38,7 @@ function log_error {
 function begin_process()
 {
    log_info ""
-   log_info "################# $1 ###################"
+   log_info "################# $1 - Started ###################"
 
    notify "$1 - Started"
 }
@@ -46,7 +46,7 @@ function begin_process()
 function end_process()
 {
    log_info ""
-   log_info "################# $1 ###################"
+   log_info "################# $1 - Ended ###################"
 
    notify "$1 - Ended"
 }
