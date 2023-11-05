@@ -354,7 +354,7 @@ if [ -z "$1" ]; then
    exit
 fi
 
-if [[ ! ${options[@]} =~ "\<$1\>" ]]; then
+if [[ ! $(echo "${options[@]}" | grep -- "$1") ]];
    echo "Invalid option: "$1
    usage
    exit 1
