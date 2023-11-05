@@ -345,7 +345,6 @@ function usage()
       echo "   "$i
    done
    echo
-   exit 0
 }
 
 if [ -z "$1" ]; then
