@@ -334,7 +334,7 @@ function import_mailbox()
    end_process "Importing mailbox"
 }
 
-options=("--export" "--export-account" "--export-mailbox" "--import" "--import-account" "--import-mailbox" "--transfer")
+options=("--export" "--export-account" "--export-mailbox" "--import" "--import-account" "--import-mailbox" "--transfer" "--status")
 
 function usage()
 {
