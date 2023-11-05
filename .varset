@@ -2,7 +2,6 @@
 # ENVIROMENT WORK
 ####################################################
 
-PROCESS_NAME="Main"; export PROCESS_NAME
 PATH_BIN_ZIMBRA="/opt/zimbra/bin"; export PATH_BIN_ZIMBRA
 PATH_BIN_CARBONIO="/opt/zextras/bin"; export PATH_BIN_CARBONIO
 USER_ZIMBRA="zimbra"; export USER_ZIMBRA
@@ -25,6 +24,7 @@ DIRREMOTE="/home/sftp_dir/zmigrate_20231022130000"
 #########################################################
 
 # NOTIFICATION
+PROCESS_NAME="Main"; export PROCESS_NAME
 TELEGRAM_ENABLED=1
 TELEGRAM_TOKEN="123456:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" ; export TELEGRAM_TOKEN
 TELEGRAM_CHAT_ID="-12345678912" ; export TELEGRAM_CHAT_ID
