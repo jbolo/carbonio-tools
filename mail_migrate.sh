@@ -24,102 +24,28 @@ fi
 DIRLOG="${DIRAPP}/log"
 TODAY_LINE=`date '+%Y%m%d%H%M%S'`
 LOGFILE="${DIRLOG}/migracion_${TODAY_LINE}.log"
-LOGLEVEL="INFO"
 
-# One Domain to work(optional)
-DOMAIN=""
-
-ZIMBRA_USER="zimbra"
 DIRBACKUP="${DIRAPP}/zmigrate_${TODAY_LINE}"
 DIRUSERPASS="${DIRBACKUP}/userpass"
 DIRUSERDATA="${DIRBACKUP}/userdata"
 DIRMAILBOX="${DIRBACKUP}/mailbox"
-
-ZEXTRAS_USER="zextras"
 
 # DIRREMOTE is
 DIRREMOTEUSERPASS="${DIRREMOTE}/userpass"
 DIRREMOTEUSERDATA="${DIRREMOTE}/userdata"
 DIRREMOTEMAILBOX="${DIRREMOTE}/mailbox"
 
-#################################
-# Functions
-#################################
 
-# Logging functions
-function log_output {
-   fecha_ahora=`date "+%Y/%m/%d %H:%M:%S"`
-   echo "${fecha_ahora} $1"
-   echo "${fecha_ahora} $1" >> $LOGFILE
-}
+# CREATE DIRECTORIES
+if [ ! -d $DIRLOG ] ; then
+   mkdir -p $DIRLOG
+fi
 
-function log_debug {
-   if [[ "$LOGLEVEL" =~ ^(DEBUG)$ ]]; then
-      log_output "DEBUG $1"
-   fi
-}
+if [ ! -d $DIRBACKUP ] ; then
+   mkdir -p $DIRBACKUP
+fi
 
-function log_info {
-   if [[ "$LOGLEVEL" =~ ^(DEBUG|INFO)$ ]]; then
-      log_output "INFO $1"
-   fi
-}
-
-function log_warn {
-   if [[ "$LOGLEVEL" =~ ^(DEBUG|INFO|WARN)$ ]]; then
-      log_output "WARN $1"
-   fi
-}
-
-function log_error {
-   if [[ "$LOGLEVEL" =~ ^(DEBUG|INFO|WARN|ERROR)$ ]]; then
-      log_output "ERROR $1"
-   fi
-}
-
-function begin_process()
-{
-   log_info ""
-   log_info "################# $1 ###################"
-}
-
-function start_shell()
-{
-   log_info "#######################################"
-   trap 'end_shell 1' INT TERM EXIT ERR
-}
-
-function end_shell()
-{
-   last_date=`date +"%Y%m%d%H%M%S"`
-   log_info "End Process .. $last_date"
-   if [ $1 -eq 1 ] ; then
-      notify "Ocurrio un problema"
-   fi
-   exit $1
-}
-
-function del_file()
-{
-   file_name=$1
-   if [ -s $file_name ] || [ ! -z $file_name ] || [ -f $file_name ] ; then
-      rm -f $file_name
-   fi
-}
-
-function notify()
-{
-   if [ $TELEGRAM_ENABLED -eq 1 ] ; then
-      message=$1
-      echo "{\"chat_id\": "${TELEGRAM_CHAT_ID}", \"text\": \""${PROCESS_NAME}":"${PID}"|"${message}"\"}" > $DIRLOG/not.txt
-      curl -X POST \
-           -H 'Content-Type: application/json' \
-           -d @${DIRLOG}/not.txt \
-           https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage
-      del_file $DIRLOG/not.txt
-   fi
-}
-
+# USAGE FUNCTION
 function usage()
 {
    echo "Script to mail migration - Zimbra to Carbonio."
@@ -131,133 +57,175 @@ function usage()
    echo
    exit 0
 }
+
 #################################
 # Main
 #################################
-function validate_zextras_user()
+function set_context()
 {
-   user=`whoami`
-   if [[ ! "$user" == "${ZEXTRAS_USER}" ]]; then
-      log_error "The actually user is not zextras: ${user}"
+   if [ -d $PATH_BIN_ZIMBRA ] ; then
+      export CONTEXT="ZIMBRA"
+      export USER_APP=$USER_ZIMBRA
+      export PATH_BIN_APP=$PATH_BIN_ZIMBRA
+      export ZMPROV="$PATH_BIN_ZIMBRA/zmprov"
+      export ZMCONTROL="$PATH_BIN_ZIMBRA/zmcontrol"
+      export ZMMAILBOX="$PATH_BIN_ZIMBRA/zmmailbox"
+
+   elif [ -d $PATH_BIN_CARBONIO ]; then
+      export CONTEXT="CARBONIO"
+      export USER_APP=$USER_CARBONIO
+      export PATH_BIN_APP=$PATH_BIN_CARBONIO
+      export ZMPROV="$PATH_BIN_CARBONIO/carbonio prov"
+      export ZMCONTROL="$PATH_BIN_CARBONIO/zmcontrol"
+      export ZMMAILBOX="$PATH_BIN_CARBONIO/zmmailbox"
+   else
+      log_error "Context type not identified."
       end_shell 1
    fi
+
+   validate_user $USER_APP
 }
 
-function validate_zimbra_user()
+function validate_user()
 {
    user=`whoami`
-   if [[ ! "$user" == "${ZIMBRA_USER}" ]]; then
-      log_error "The actually user is not zimbra: ${user}"
+   if [[ ! "$user" == "${USER_APP}" ]]; then
+      log_error "The actually user is not: ${USER_APP}"
       end_shell 1
    fi
 }
 
 function count_mailbox_user()
 {
+   EMAILS_FILE="$1"
+   REPORT_FILE="$2"
+
+   if [ ! -f "$EMAILS_FILE" ]; then
+      # file not exists
+      EMAILS_FILE="${DIRBACKUP}/emails.txt"
+      get_list_emails "$EMAILS_FILE"
+   fi
+
    begin_process "Getting mailbox user details"
-   for j in `cat ${DIRBACKUP}/emails.txt | egrep -v "^(spam|ham)"`; do
+   for j in `cat ${EMAILS_FILE} | egrep -v "^(spam|ham)"`; do
       log_info "Analizing account: ${j}"
       total=0;
 
-      for i in `${PATH_BIN_ZIMBRA}/zmmailbox -z -m "$j" gaf | awk '{print $4}' | egrep -o "[0-9]+"`; do
+      for i in `${ZMMAILBOX} -z -m "$j" gaf | awk '{print $4}' | egrep -o "[0-9]+"`; do
          total=$((total + i ));
       done;
-      log_info "Total Q    for ${j} = ${total}";
 
-      size=`${PATH_BIN_ZIMBRA}/zmmailbox -z -m "$j" gms`;
-      log_info "Total size for ${j} = ${size}";
+      size=`${ZMMAILBOX} -z -m "$j" gms`;
+      log_info "Report:Email:${j}|Q=${total}|Size=${size}";
+
+      if [ ! -z "$REPORT_FILE" ]; then
+         LINE_RESUME="${j}|${total}|${size}"
+         echo $LINE_RESUME >> $REPORT_FILE
+      fi
    done
+
+   end_process "Getting mailbox user details"
 }
 
-function count_mailbox_usercarbonio()
+function get_status_server()
 {
-   for j in `cat ${DIRREMOTE}/emails.txt | egrep -v "^(spam|ham)"`; do
-      log_info "Analizing account: ${j}"
-      total=0;
+   begin_process "Getting status"
+   version=`${ZMCONTROL} -v`
+   log_info "${version}"
 
-      for i in `${PATH_BIN_ZIMBRA}/zmmailbox -z -m "$j" gaf | awk '{print $4}' | egrep -o "[0-9]+"`; do
-         total=$((total + i ));
-      done;
-      log_info "Total Q    for ${j} = ${total}";
+   status=`${ZMCONTROL} status`
+   log_info "${status}"
+   end_process "Getting status"
+}
 
-      size=`${PATH_BIN_ZIMBRA}/zmmailbox -z -m "$j" gms`;
-      log_info "Total size for ${j} = ${size}";
-   done
+function get_list_emails()
+{
+   EMAILS_FILE="$1"
+   if [ -z "$1"]; then
+      echo "Filename empty"
+      exit 1
+   fi
+
+   begin_process "Getting emails"
+   log_info "${ZMPROV} -l gaa ${DOMAIN} > ${EMAILS_FILE}"
+   ${ZMPROV} -l gaa ${DOMAIN} > "${EMAILS_FILE}"
+   cat "${EMAILS_FILE}"
+   q_emails=`wc -l ${EMAILS_FILE} |awk '{print $1}'`
+   log_info "Total emails: $q_emails"
+   end_process "Getting emails"
 }
 
 function export_account()
 {
-   notify "Export account - Started"
-   mkdir -p "${DIRLOG}"
-   validate_zimbra_user
-   begin_process "Starting process of account export"
-
-   version=`zmcontrol -v`
-   log_info "${version}"
-
-   status=`zmcontrol status`
-   log_info "${status}"
-
-   log_info "Creating backup directory: ${DIRBACKUP}"
-   mkdir -p ${DIRBACKUP}
    cd ${DIRBACKUP}
 
    begin_process "Getting domains"
-   log_info "${PATH_BIN_ZIMBRA}/zmprov -l gad > domains.txt"
-   ${PATH_BIN_ZIMBRA}/zmprov -l gad > "${DIRBACKUP}/domains.txt"
+   log_info "${ZMPROV} -l gad > domains.txt"
+   ${ZMPROV} -l gad > "${DIRBACKUP}/domains.txt"
 
    if [[ ! "${DOMAIN}" == "" ]]; then
       if [ ! `grep -c "${DOMAIN}" "${DIRBACKUP}/domains.txt"` -eq 1 ]; then
          log_error "Domain ${DOMAIN} not exist."
-         exit 1
+         end_shell 1
       fi
       log_info "Using domain: ${DOMAIN}"
       echo "${DOMAIN}" > "${DIRBACKUP}/domains.txt"
    fi
+   end_process "Getting domains"
 
-   begin_process "Getting emails"
-   log_info "${PATH_BIN_ZIMBRA}/zmprov -l gaa ${DOMAIN} > emails.txt"
-   ${PATH_BIN_ZIMBRA}/zmprov -l gaa ${DOMAIN} > "${DIRBACKUP}/emails.txt"
-   cat "${DIRBACKUP}/emails.txt"
-   q_emails=`wc -l ${DIRBACKUP}/emails.txt |awk '{print $1}'`
-   log_info "Total emails: $q_emails"
+   #################################################
+
+   EMAILS_FILE="${DIRBACKUP}/emails.txt"
+   get_list_emails "${EMAILS_FILE}"
+
+   #################################################
 
    begin_process "Exporting users and password"
    mkdir -p ${DIRUSERPASS}
    log_info "Exporting user password in: ${DIRUSERPASS}"
    count=0
-   for i in `cat ${DIRBACKUP}/emails.txt`; do
+   for i in `cat ${EMAILS_FILE}`; do
       let count=$count+1
-      log_info "[$count/$q_emails] ${PATH_BIN_ZIMBRA}/zmprov  -l ga ${i} userPassword..."
-      ${PATH_BIN_ZIMBRA}/zmprov  -l ga ${i} userPassword | grep userPassword: | awk '{print $2}' > ${DIRUSERPASS}/${i}.shadow;
+      log_info "[$count/$q_emails] ${ZMPROV} -l ga ${i} userPassword..."
+      ${ZMPROV}  -l ga ${i} userPassword | grep userPassword: | awk '{print $2}' > ${DIRUSERPASS}/${i}.shadow;
    done
+
+   end_process "Exporting users and password"
+
+   #################################################
 
    begin_process "Exporting usersdata"
    mkdir -p ${DIRUSERDATA}
    log_info "Exporting user data in: ${DIRUSERDATA}"
    count=0
-   for i in `cat ${DIRBACKUP}/emails.txt`; do
+   for i in `cat ${EMAILS_FILE}`; do
       let count=$count+1
-      log_info "[$count/$q_emails] ${PATH_BIN_ZIMBRA}/zmprov ga ${i}..."
-      ${PATH_BIN_ZIMBRA}/zmprov ga ${i}  | grep -i Name: > ${DIRUSERDATA}/${i}.txt ;
+      log_info "[$count/$q_emails] ${ZMPROV} ga ${i}..."
+      ${ZMPROV} ga ${i}  | grep -i Name: > ${DIRUSERDATA}/${i}.txt ;
    done
-   notify "Export account - Terminated"
 
+   end_process "Exporting usersdata"
 }
 
 function export_mailbox()
 {
-   count_mailbox_user
+   EMAILS_FILE="${DIRBACKUP}/emails.txt"
+   REPORT_FILE="${DIRBACKUP}/report.txt"
+   if [ ! -f $EMAILS_FILE ]; then
+      # file not exists
+      get_list_emails $EMAILS_FILE
+   fi
+   count_mailbox_user "$EMAILS_FILE" "$REPORT_FILE"
 
    notify "Export mailbox - Started"
    mkdir -p ${DIRMAILBOX}
    begin_process "Exporting mailbox in : ${DIRMAILBOX}"
-   q_emails=`wc -l ${DIRBACKUP}/emails.txt |awk '{print $1}'`
+   q_emails=`wc -l ${EMAILS_FILE} |awk '{print $1}'`
    count=0
-   for email in `cat ${DIRBACKUP}/emails.txt`; do
+   for email in `cat ${EMAILS_FILE}`; do
       let count=$count+1
-      log_info "[$count/$q_emails] ${PATH_BIN_ZIMBRA}/zmmailbox -z -m ${email}..." ;
-      ${PATH_BIN_ZIMBRA}/zmmailbox -z -m ${email} -t 0 getRestURL '/?fmt=tgz' > ${DIRMAILBOX}/$email.tgz ;
+      log_info "[$count/$q_emails] ${ZMMAILBOX} -z -m ${email}..." ;
+      ${ZMMAILBOX} -z -m ${email} -t 0 getRestURL '/?fmt=tgz' > ${DIRMAILBOX}/$email.tgz ;
       log_info "${email} -- finished " ;
    done
    notify "Export mailbox - Terminated"
@@ -277,41 +245,57 @@ function transfer_data()
    notify "Transfer data - Terminated"
 }
 
+function validate_remote_files()
+{
+   if [ -d "${DIRREMOTE}"]; then
+      echo "Backup Directory not exists."
+      end_shell 1
+   fi
+
+   export REMOTE_DOMAINS_FILE="${DIRREMOTE}/domains.txt"
+   export REMOTE_EMAILS_FILE="${DIRREMOTE}/emails.txt"
+
+   if [ -d "${REMOTE_DOMAINS_FILE}"]; then
+      echo "Domain file not exists."
+      end_shell 1
+   fi
+   if [ -d "${REMOTE_EMAILS_FILE}"]; then
+      echo "Emails file not exists."
+      end_shell 1
+   fi
+}
+
 function import_account()
 {
-   notify "Import account - Started"
-   mkdir -p "${DIRLOG}"
-   validate_zextras_user
+   validate_remote_files
 
-   begin_process "Starting process of account import..."
-
-   version=`${PATH_BIN_ZIMBRA}/zmcontrol -v`
-   log_info "${version}"
-
-   status=`${PATH_BIN_ZIMBRA}/zmcontrol status`
-   log_info "${status}"
-
-   log_info "List of Domains:"
-   log_info "carbonio prov -l gad"
-   list_domain=`carbonio prov -l gad`
-   log_info "${list_domain}"
+   #################################################
 
    begin_process "Provisioning domains"
-   for i in `cat ${DIRREMOTE}/domains.txt `; do
+   log_info "List of Domains:"
+   log_info "${ZMPROV} -l gad"
+   list_domain=`${ZMPROV} -l gad`
+   log_info "${list_domain}"
+
+   for i in `cat ${REMOTE_DOMAINS_FILE} `; do
       log_info "Domain: ${i}"
-      provi=`carbonio prov cd $i zimbraAuthMech zimbra`
+      provi=`${ZMPROV} cd $i zimbraAuthMech zimbra`
       log_info "${provi}"
    done
 
    log_info "List of Domains:"
-   log_info "carbonio prov -l gad"
-   list_domain=`carbonio prov -l gad`
+   log_info "${ZMPROV} -l gad"
+   list_domain=`${ZMPROV} -l gad`
    log_info "${list_domain}"
 
+   end_process "Provisioning domains"
+
+   #################################################
+
    begin_process "Provisiong accounts"
-   q_emails=`wc -l ${DIRREMOTE}/emails.txt |awk '{print $1}'`
+   q_emails=`wc -l ${REMOTE_EMAILS_FILE} |awk '{print $1}'`
    count=0
-   for i in `cat ${DIRREMOTE}/emails.txt`
+   for i in `cat ${REMOTE_EMAILS_FILE}`
    do
       let count=$count+1
       log_info "[$count/$q_emails] Account ${i}"
@@ -320,22 +304,25 @@ function import_account()
       shadowpass=`cat ${DIRREMOTEUSERPASS}/$i.shadow`
 
       log_info "Creating account"
-      carbonio prov ca $i CHANGEme cn "$givenname" displayName "$displayname" givenName "$givenname"
+      ${ZMPROV} ca $i CHANGEme cn "$givenname" displayName "$displayname" givenName "$givenname"
       log_info "Updating account password"
-      carbonio prov ma $i userPassword "$shadowpass"
+      ${ZMPROV} ma $i userPassword "$shadowpass"
    done
 
    log_info "List of Accounts:"
-   list_acc=`carbonio prov -l gaa -v ${DOMAIN} | grep -e displayName`
+   list_acc=`${ZMPROV} -l gaa -v ${DOMAIN} | grep -e displayName`
    log_info "${list_acc}"
-   notify "Import account - Terminated"
+   end_process "Provisiong accounts"
 }
 
 
 function import_mailbox()
 {
-   notify "Import mailbox - Started"
-   begin_process "Importing mailboxs"
+   validate_remote_files
+
+   #################################################
+
+   begin_process "Importing mailbox"
    log_info "   Important Note:"
    log_info ""
    log_info "Few things you should keep in mind before starting the mailbox export/import process:"
@@ -351,37 +338,75 @@ function import_mailbox()
       zmmailbox -z -m ${email} -t 0 postRestURL "/?fmt=tgz&resolve=skip" ${DIRREMOTEMAILBOX}/$email.tgz ;
       log_info "${email} -- finished " ;
    done
-   notify "Import mailbox - Terminated"
-   count_mailbox_usercarbonio
+
+   count_mailbox_user "${DIRREMOTE}/emails.txt" "${DIRREMOTE}/report.final.txt"
+   # Pending conciliate
+
+   end_process "Importing mailbox"
 }
 
-while getopts ":eitmh" options; do
-   case "${options}" in
-      e) # Export zimbra mailbox
-         start_shell
-         export_account
-         export_mailbox
-         transfer_data ${DIRBACKUP}
-         end_shell;;
-      i) # Import account to carbonio
-         start_shell
-         import_account
-         end_shell;;
-      m) # Import mailbox to carbonio
-         start_shell
-         import_mailbox
-         end_shell;;
-      t) # Transfer data by rsync
-         start_shell
-         transfer_data
-         end_shell;;
-      *) # Invalid option
-         echo "Invalid option: "$1
-         usage
-         end_shell 1
-         ;;
-   esac
-done
+options=("--export" "--export-account" "--export-mailbox" "--import" "--import-account" "--import-mailbox" "--transfer")
 
-echo "Enter an option."
-usage
+if [ -z "$1" ]; then
+   usage
+   end_shell
+fi
+
+if [[ ! ${options[@]} =~ "\<$1\>" ]]; then
+   echo "Invalid option: "$1
+   usage
+   end_shell 1
+fi
+
+case "$1" in
+   "--export") # Export all
+      set_context
+      begin_shell
+      get_status_server
+      export_account
+      export_mailbox
+      transfer_data ${DIRBACKUP}
+      end_shell;;
+   "--export-account") # Export account
+      set_context
+      begin_shell
+      export_account
+      end_shell;;
+   "--export-mailbox") # Export account
+      set_context
+      begin_shell
+      export_mailbox
+      end_shell;;
+   "--import") # Import all
+      set_context
+      begin_shell
+      get_status_server
+      import_account
+      import_mailbox
+      end_shell;;
+   "--import-account") # Import account
+      set_context
+      begin_shell
+      import_account
+      end_shell;;
+   "--import-mailbox") # Import mailbox
+      set_context
+      begin_shell
+      import_mailbox
+      end_shell;;
+   "--transfer") # Transfer data by rsync
+      set_context
+      begin_shell
+      transfer_data
+      end_shell;;
+   "--status") # Status
+      set_context
+      get_status_server
+      count_mailbox_user
+      end_shell;;
+   *) # Invalid option
+      echo "Invalid option: "$1
+      usage
+      end_shell 1
+      ;;
+esac

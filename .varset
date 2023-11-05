@@ -2,17 +2,27 @@
 # ENVIROMENT WORK
 ####################################################
 
-PROCESS_NAME="Main"
-PATH_BIN_ZIMBRA="/opt/zimbra/bin"
+PROCESS_NAME="Main"; export PROCESS_NAME
+PATH_BIN_ZIMBRA="/opt/zimbra/bin"; export PATH_BIN_ZIMBRA
+PATH_BIN_CARBONIO="/opt/zextras/bin"; export PATH_BIN_CARBONIO
+USER_ZIMBRA="zimbra"; export USER_ZIMBRA
+USER_CARBONIO="zextras"; export USER_CARBONIO
+
+LOGLEVEL="INFO"; export LOGLEVEL
+
+# DOMAIN TO WORK(OPTIONAL)
+DOMAIN=""; export DOMAIN
 
 # REMOTE SERVER
 SSHREMOTE="sftp@1.1.1.1" ; export SSHREMOTE
 SSHPASSWORD="adminadmin"; export SSHPASSWORD
-SSHDIR="/home/sftp_dir"
+SSHDIR="/home/sftp_dir";
 
-# REMOTE DIRECTORY (only for import)
+
+# REMOTE DIRECTORY(IMPORT)
 DIRREMOTE="/home/sftp_dir/zmigrate_20231022130000"
 
+#########################################################
 
 # NOTIFICATION
 TELEGRAM_ENABLED=1
