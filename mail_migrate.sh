@@ -45,7 +45,7 @@ if [ ! -d $DIRBACKUP ] ; then
    mkdir -p $DIRBACKUP
 fi
 
-. $DIRAPP/.functions.sh
+. $DIRAPP/functions.sh
 
 #################################
 # Main
