@@ -351,13 +351,13 @@ function usage()
 
 if [ -z "$1" ]; then
    usage
-   end_shell
+   exit
 fi
 
 if [[ ! ${options[@]} =~ "\<$1\>" ]]; then
    echo "Invalid option: "$1
    usage
-   end_shell 1
+   exit 1
 fi
 
 case "$1" in
@@ -409,6 +409,6 @@ case "$1" in
    *) # Invalid option
       echo "Invalid option: "$1
       usage
-      end_shell 1
+      exit 1
       ;;
 esac
