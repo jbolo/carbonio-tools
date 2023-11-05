@@ -61,7 +61,7 @@ function end_shell()
 {
    last_date=`date +"%Y%m%d%H%M%S"`
    log_info "End Process .. $last_date"
-   if [ "$1" -eq "1" ] ; then
+   if [[ "$1" == "1" ]] ; then
       notify "Error ocurred"
    fi
    exit $1
