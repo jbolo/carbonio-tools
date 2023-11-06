@@ -401,7 +401,6 @@ function import_mailbox()
 
 function import_dlist()
 {
-
    begin_process "Importing distribution list"
    DLIST_FILE="${DIRREMOTE}/dlist.txt"
    if [ ! -f $DLIST_FILE ]; then
