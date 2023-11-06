@@ -432,9 +432,10 @@ function import_alias()
       end_shell
    fi
 
-   for email in `ls ${DIRREMOTEALIAS}`; do
+   for email_filename in `ls ${DIRREMOTEALIAS}`; do
+      email=${email_filename:0:-4}
       log_info "Creating alias to: ${email}"
-      for alias in `grep '@' ${DIRREMOTEALIAS}/${email}`; do
+      for alias in `grep '@' ${DIRREMOTEALIAS}/${email_filename}`; do
          log_info "${ZMPROV} aaa $email $alias ..."
          ${ZMPROV} aaa $email $alias
       done
