@@ -301,18 +301,18 @@ function transfer_data()
 
 function validate_remote_files()
 {
-   if [ -d "${DIRREMOTE}" ]; then
+   if [ ! -d "${DIRREMOTE}" ]; then
       echo "Backup Directory not exists."
       end_shell 1
    fi
 
-   export REMOTE_DOMAINS_FILE="${DIRREMOTE}/domains.txt"
+   # export REMOTE_DOMAINS_FILE="${DIRREMOTE}/domains.txt"
    export REMOTE_EMAILS_FILE="${DIRREMOTE}/emails.txt"
 
-   if [ ! -f "${REMOTE_DOMAINS_FILE}" ]; then
-      echo "Domain file not exists."
-      end_shell 1
-   fi
+   # if [ ! -f "${REMOTE_DOMAINS_FILE}" ]; then
+   #    echo "Domain file not exists."
+   #    end_shell 1
+   # fi
    if [ ! -f "${REMOTE_EMAILS_FILE}" ]; then
       echo "Emails file not exists."
       end_shell 1
