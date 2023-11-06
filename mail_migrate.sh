@@ -154,7 +154,7 @@ function get_status_server()
 function get_list_emails()
 {
    EMAILS_FILE="$1"
-   if [ -z "$1"]; then
+   if [ -z "$1" ]; then
       echo "Filename empty"
       exit 1
    fi
