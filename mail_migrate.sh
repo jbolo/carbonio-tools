@@ -26,15 +26,19 @@ TODAY_LINE=`date '+%Y%m%d%H%M%S'`
 LOGFILE="${DIRLOG}/migracion_${TODAY_LINE}.log"
 
 DIRBACKUP="${DIRAPP}/zmigrate_${TODAY_LINE}"
+
 DIRUSERPASS="${DIRBACKUP}/userpass"
 DIRUSERDATA="${DIRBACKUP}/userdata"
 DIRMAILBOX="${DIRBACKUP}/mailbox"
+DIRDLIST="${DIRBACKUP}/dlist"
+DIRALIAS="${DIRBACKUP}/alias"
 
 # DIRREMOTE is
 DIRREMOTEUSERPASS="${DIRREMOTE}/userpass"
 DIRREMOTEUSERDATA="${DIRREMOTE}/userdata"
 DIRREMOTEMAILBOX="${DIRREMOTE}/mailbox"
-
+DIRREMOTEDLIST="${DIRREMOTE}/maidlistlbox"
+DIRREMOTEALIAS="${DIRREMOTE}/alias"
 
 # CREATE DIRECTORIES
 if [ ! -d $DIRLOG ] ; then
@@ -43,6 +47,26 @@ fi
 
 if [ ! -d $DIRBACKUP ] ; then
    mkdir -p $DIRBACKUP
+fi
+
+if [ ! -d $DIRUSERPASS ] ; then
+   mkdir -p $DIRUSERPASS
+fi
+
+if [ ! -d $DIRUSERDATA ] ; then
+   mkdir -p $DIRUSERDATA
+fi
+
+if [ ! -d $DIRMAILBOX ] ; then
+   mkdir -p $DIRMAILBOX
+fi
+
+if [ ! -d $DIRDLIST ] ; then
+   mkdir -p $DIRDLIST
+fi
+
+if [ ! -d $DIRALIAS ] ; then
+   mkdir -p $DIRALIAS
 fi
 
 . $DIRAPP/functions.sh
@@ -170,7 +194,6 @@ function export_account()
    #################################################
 
    begin_process "Exporting users and password"
-   mkdir -p ${DIRUSERPASS}
    log_info "Exporting user password in: ${DIRUSERPASS}"
    count=0
    for i in `cat ${EMAILS_FILE}`; do
@@ -184,7 +207,6 @@ function export_account()
    #################################################
 
    begin_process "Exporting usersdata"
-   mkdir -p ${DIRUSERDATA}
    log_info "Exporting user data in: ${DIRUSERDATA}"
    count=0
    for i in `cat ${EMAILS_FILE}`; do
@@ -206,9 +228,9 @@ function export_mailbox()
    fi
    count_mailbox_user "$EMAILS_FILE" "$REPORT_FILE"
 
-   notify "Export mailbox - Started"
-   mkdir -p ${DIRMAILBOX}
-   begin_process "Exporting mailbox in : ${DIRMAILBOX}"
+   begin_process "Exporting mailbox"
+
+   log_info "Exporting mailbox in : ${DIRMAILBOX}"
    q_emails=`wc -l ${EMAILS_FILE} |awk '{print $1}'`
    count=0
    for email in `cat ${EMAILS_FILE}`; do
@@ -217,9 +239,52 @@ function export_mailbox()
       ${ZMMAILBOX} -z -m ${email} -t 0 getRestURL '/?fmt=tgz' > ${DIRMAILBOX}/$email.tgz ;
       log_info "${email} -- finished " ;
    done
-   notify "Export mailbox - Terminated"
+
+   end_process "Exporting mailbox"
 }
 
+function export_dlist()
+{
+   begin_process "Exporting distribution list"
+   DLIST_FILE="${DIRBACKUP}/dlist.txt"
+   log_info "${ZMPROV} gadl > $DLIST_FILE"
+   ${ZMPROV} gadl > $DLIST_FILE
+   cat $DLIST_FILE
+
+   for listname in `cat ${DLIST_FILE}`; do
+      log_info "${ZMPROV} gdlm $listname > ${DIRDLIST}/$listname.txt..."
+      ${ZMPROV} gdlm $listname > ${DIRDLIST}/$listname.txt ;
+   done
+   end_process "Exporting distribution list"
+}
+
+function export_alias()
+{
+   EMAILS_FILE="${DIRBACKUP}/emails.txt"
+   if [ ! -f $EMAILS_FILE ]; then
+      # file not exists
+      get_list_emails $EMAILS_FILE
+   fi
+
+   begin_process "Exporting alias"
+
+   log_info "Exporting alias in : ${DIRALIAS}"
+   q_emails=`wc -l ${EMAILS_FILE} |awk '{print $1}'`
+   count=0
+   for email in `cat ${EMAILS_FILE}`; do
+      let count=$count+1
+      log_info "[$count/$q_emails] ${ZMPROV} ga $email | grep zimbraMailAlias > ${DIRALIAS}/$email.txt..." ;
+      ${ZMPROV} ga $email | grep zimbraMailAlias > ${DIRALIAS}/$email.txt ;
+      if [ ! -s "${DIRALIAS}/$email.txt" ]; then
+         del_file "${DIRALIAS}/$email.txt"
+      fi
+   done
+
+   q_alias=`ls ${DIRALIAS} | wc -l | awk '{print $1}'`
+   log_info "Total alias: $q_alias"
+
+   end_process "Exporting alias"
+}
 function transfer_data()
 {
    notify "Transfer data - Started"
@@ -244,11 +309,11 @@ function validate_remote_files()
    export REMOTE_DOMAINS_FILE="${DIRREMOTE}/domains.txt"
    export REMOTE_EMAILS_FILE="${DIRREMOTE}/emails.txt"
 
-   if [ -d "${REMOTE_DOMAINS_FILE}"]; then
+   if [ ! -f "${REMOTE_DOMAINS_FILE}"]; then
       echo "Domain file not exists."
       end_shell 1
    fi
-   if [ -d "${REMOTE_EMAILS_FILE}"]; then
+   if [ ! -f "${REMOTE_EMAILS_FILE}"]; then
       echo "Emails file not exists."
       end_shell 1
    fi
@@ -334,7 +399,58 @@ function import_mailbox()
    end_process "Importing mailbox"
 }
 
-options=("--export" "--export-account" "--export-mailbox" "--import" "--import-account" "--import-mailbox" "--transfer" "--status")
+function import_dlist()
+{
+   validate_remote_files
+
+   #################################################
+
+   begin_process "Importing distribution list"
+   DLIST_FILE="${DIRREMOTE}/dlist.txt"
+   if [ ! -f $DLIST_FILE ]; then
+      log_info "Distribution List file not found"
+      end_shell
+   fi
+
+   for listname in `cat ${DLIST_FILE}`; do
+      log_info "Importing dlist: $listname"
+      log_info "${ZMPROV} cdl $listname..."
+      ${ZMPROV} cdl $listname
+
+      for email in `cat ${DLIST_FILE}/${listname}.txt`; do
+         log_info "${ZMPROV} adlm $listname $email"
+         ${ZMPROV} adlm $listname $email
+      done
+   done
+   end_process "Importing distribution list"
+}
+
+function import_alias()
+{
+   validate_remote_files
+
+   #################################################
+
+   begin_process "Importing alias"
+   q_alias=`ls ${DIRREMOTEALIAS} | wc -l | awk '{print $1}'`
+   log_info "Total alias: $q_alias"
+
+   if [ $q_alias -eq 0 ]; then
+      log_info "Alias file not found."
+      end_shell
+   fi
+
+   for email in `ls ${DIRREMOTEALIAS}`; do
+      log_info "Creating alias to: ${email}"
+      for alias in `cat ${DIRREMOTEALIAS}/${email}`; do
+         log_info "${ZMPROV} aaa $email $alias ..."
+         ${ZMPROV} aaa $email $alias
+      done
+   done
+   end_process "Importing alias"
+}
+
+options=("--export" "--export-account" "--export-mailbox" "--export-dlist" "--export-alias" "--import" "--import-account" "--import-mailbox" "--import-dlist" "--import-alias" "--transfer" "--status")
 
 function usage()
 {
@@ -366,24 +482,40 @@ case "$1" in
       begin_shell
       get_status_server
       export_account
+      export_dlist
+      export_alias
       export_mailbox
-      transfer_data ${DIRBACKUP}
+      if [ $TRANSFER_ENABLED -eq 1 ] ; then
+         transfer_data ${DIRBACKUP}
+      fi
       end_shell;;
    "--export-account") # Export account
       set_context
       begin_shell
       export_account
       end_shell;;
-   "--export-mailbox") # Export account
+   "--export-mailbox") # Export mailbox
       set_context
       begin_shell
       export_mailbox
+      end_shell;;
+   "--export-dlist") # Export distribution list
+      set_context
+      begin_shell
+      export_dlist
+      end_shell;;
+   "--export-alias") # Export alias
+      set_context
+      begin_shell
+      export_alias
       end_shell;;
    "--import") # Import all
       set_context
       begin_shell
       get_status_server
       import_account
+      import_dlist
+      import_alias
       import_mailbox
       end_shell;;
    "--import-account") # Import account
@@ -395,6 +527,16 @@ case "$1" in
       set_context
       begin_shell
       import_mailbox
+      end_shell;;
+   "--import-dlist") # Import distribution list
+      set_context
+      begin_shell
+      import_dlist
+      end_shell;;
+   "--import-alias") # Import alias
+      set_context
+      begin_shell
+      import_alias
       end_shell;;
    "--transfer") # Transfer data by rsync
       set_context
