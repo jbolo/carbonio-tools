@@ -301,7 +301,7 @@ function transfer_data()
 
 function validate_remote_files()
 {
-   if [ -d "${DIRREMOTE}"]; then
+   if [ -d "${DIRREMOTE}" ]; then
       echo "Backup Directory not exists."
       end_shell 1
    fi
@@ -309,11 +309,11 @@ function validate_remote_files()
    export REMOTE_DOMAINS_FILE="${DIRREMOTE}/domains.txt"
    export REMOTE_EMAILS_FILE="${DIRREMOTE}/emails.txt"
 
-   if [ ! -f "${REMOTE_DOMAINS_FILE}"]; then
+   if [ ! -f "${REMOTE_DOMAINS_FILE}" ]; then
       echo "Domain file not exists."
       end_shell 1
    fi
-   if [ ! -f "${REMOTE_EMAILS_FILE}"]; then
+   if [ ! -f "${REMOTE_EMAILS_FILE}" ]; then
       echo "Emails file not exists."
       end_shell 1
    fi
@@ -417,7 +417,7 @@ function import_dlist()
       log_info "${ZMPROV} cdl $listname..."
       ${ZMPROV} cdl $listname
 
-      for email in `cat ${DLIST_FILE}/${listname}.txt`; do
+      for email in `cat ${DIRREMOTEDLIST}/${listname}.txt`; do
          log_info "${ZMPROV} adlm $listname $email"
          ${ZMPROV} adlm $listname $email
       done
@@ -436,7 +436,7 @@ function import_alias()
    log_info "Total alias: $q_alias"
 
    if [ $q_alias -eq 0 ]; then
-      log_info "Alias file not found."
+      log_info "Alias files not found."
       end_shell
    fi
 
