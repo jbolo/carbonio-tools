@@ -413,7 +413,7 @@ function import_dlist()
       log_info "${ZMPROV} cdl $listname..."
       ${ZMPROV} cdl $listname
 
-      for email in `cat ${DIRREMOTEDLIST}/${listname}.txt`; do
+      for email in `grep -v '#' ${DIRREMOTEDLIST}/${listname}.txt | grep '@'`; do
          log_info "${ZMPROV} adlm $listname $email"
          ${ZMPROV} adlm $listname $email
       done
@@ -434,7 +434,7 @@ function import_alias()
 
    for email in `ls ${DIRREMOTEALIAS}`; do
       log_info "Creating alias to: ${email}"
-      for alias in `cat ${DIRREMOTEALIAS}/${email}`; do
+      for alias in `grep '@' ${DIRREMOTEALIAS}/${email}`; do
          log_info "${ZMPROV} aaa $email $alias ..."
          ${ZMPROV} aaa $email $alias
       done
