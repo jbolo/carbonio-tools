@@ -306,13 +306,13 @@ function validate_remote_files()
       end_shell 1
    fi
 
-   # export REMOTE_DOMAINS_FILE="${DIRREMOTE}/domains.txt"
+   export REMOTE_DOMAINS_FILE="${DIRREMOTE}/domains.txt"
    export REMOTE_EMAILS_FILE="${DIRREMOTE}/emails.txt"
 
-   # if [ ! -f "${REMOTE_DOMAINS_FILE}" ]; then
-   #    echo "Domain file not exists."
-   #    end_shell 1
-   # fi
+   if [ ! -f "${REMOTE_DOMAINS_FILE}" ]; then
+      echo "Domain file not exists."
+      end_shell 1
+   fi
    if [ ! -f "${REMOTE_EMAILS_FILE}" ]; then
       echo "Emails file not exists."
       end_shell 1
@@ -401,9 +401,6 @@ function import_mailbox()
 
 function import_dlist()
 {
-   validate_remote_files
-
-   #################################################
 
    begin_process "Importing distribution list"
    DLIST_FILE="${DIRREMOTE}/dlist.txt"
@@ -427,10 +424,6 @@ function import_dlist()
 
 function import_alias()
 {
-   validate_remote_files
-
-   #################################################
-
    begin_process "Importing alias"
    q_alias=`ls ${DIRREMOTEALIAS} | wc -l | awk '{print $1}'`
    log_info "Total alias: $q_alias"
