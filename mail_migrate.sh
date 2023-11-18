@@ -32,6 +32,8 @@ DIRUSERDATA="${DIRBACKUP}/userdata"
 DIRMAILBOX="${DIRBACKUP}/mailbox"
 DIRDLIST="${DIRBACKUP}/dlist"
 DIRALIAS="${DIRBACKUP}/alias"
+DIRCALENDAR="${DIRBACKUP}/calendar"
+DIRCONTACTS="${DIRBACKUP}/contacts"
 
 # DIRREMOTE is
 DIRREMOTEUSERPASS="${DIRREMOTE}/userpass"
@@ -39,6 +41,8 @@ DIRREMOTEUSERDATA="${DIRREMOTE}/userdata"
 DIRREMOTEMAILBOX="${DIRREMOTE}/mailbox"
 DIRREMOTEDLIST="${DIRREMOTE}/dlist"
 DIRREMOTEALIAS="${DIRREMOTE}/alias"
+DIRREMOTECALENDAR="${DIRREMOTE}/calendar"
+DIRREMOTECONTACTS="${DIRREMOTE}/contacts"
 
 # CREATE DIRECTORIES
 if [ ! -d $DIRLOG ] ; then
@@ -285,6 +289,36 @@ function export_alias()
 
    end_process "Exporting alias"
 }
+
+function export_calendar_contacts()
+{
+   EMAILS_FILE="${DIRBACKUP}/emails.txt"
+
+   if [ ! -f $EMAILS_FILE ]; then
+      # file not exists
+      get_list_emails $EMAILS_FILE
+   fi
+
+   begin_process "Exporting calendar and contacts"
+
+   log_info "Exporting calendar in : ${DIRCALENDAR}"
+   log_info "Exporting contacts in : ${DIRCONTACTS}"
+
+   q_emails=`wc -l ${EMAILS_FILE} |awk '{print $1}'`
+   count=0
+   for email in `cat ${EMAILS_FILE}`; do
+      let count=$count+1
+      log_info "[$count/$q_emails] ${ZMMAILBOX} -z -m ${email}.../Calendar/?fmt=tgz" ;
+      ${ZMMAILBOX} -z -m ${email} -t 0 getRestURL '/Calendar/?fmt=tgz' > ${DIRCALENDAR}/$email.tgz ;
+
+      log_info "[$count/$q_emails] ${ZMMAILBOX} -z -m ${email}.../Contacts/?fmt=tgz" ;
+      ${ZMMAILBOX} -z -m ${email} -t 0 getRestURL '/Contacts/?fmt=tgz' > ${DIRCONTACTS}/$email.tgz ;
+      log_info "${email} -- finished " ;
+   done
+
+   end_process "Exporting calendar and contacts"
+}
+
 function transfer_data()
 {
    notify "Transfer data - Started"
@@ -399,6 +433,29 @@ function import_mailbox()
    end_process "Importing mailbox"
 }
 
+function import_calendar_contacts()
+{
+   validate_remote_files
+
+   #################################################
+
+   begin_process "Importing calendar and contacts"
+
+   q_emails=`wc -l ${DIRREMOTE}/emails.txt |awk '{print $1}'`
+   count=0
+   for email in `cat ${DIRREMOTE}/emails.txt`; do
+      let count=$count+1
+      log_info "[$count/$q_emails] zmmailbox -z -m ${email}...Calendar"
+      zmmailbox -z -m ${email} -t 0 postRestURL "/?fmt=tgz&resolve=skip" ${DIRREMOTECALENDAR}/$email.tgz ;
+
+      log_info "[$count/$q_emails] zmmailbox -z -m ${email}...Contacts"
+      zmmailbox -z -m ${email} -t 0 postRestURL "/?fmt=tgz&resolve=skip" ${DIRREMOTECONTACTS}/$email.tgz ;
+      log_info "${email} -- finished " ;
+   done
+
+   end_process "Importing mailbox"
+}
+
 function import_dlist()
 {
    begin_process "Importing distribution list"
@@ -502,6 +559,11 @@ case "$1" in
       begin_shell
       export_alias
       end_shell;;
+   "--export-calendar-contacts") # Export Calendar and Contacts
+      set_context
+      begin_shell
+      export_calendar_contacts
+      end_shell;;
    "--import") # Import all
       set_context
       begin_shell
@@ -530,6 +592,11 @@ case "$1" in
       set_context
       begin_shell
       import_alias
+      end_shell;;
+   "--import-calendar-contacts") # Import Calendar and Contacts
+      set_context
+      begin_shell
+      import_calendar_contacts
       end_shell;;
    "--transfer") # Transfer data by rsync
       set_context
