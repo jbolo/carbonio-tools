@@ -60,11 +60,14 @@ function begin_shell()
 function end_shell()
 {
    last_date=`date +"%Y%m%d%H%M%S"`
-   log_info "End Process .. $last_date"
+
    if [[ "$1" == "1" ]] ; then
       notify "Error ocurred"
+      log_error "End Process with error .. $last_date"
+      exit $1
    fi
-   exit $1
+   log_info "End Process .. $last_date"
+   exit
 }
 
 function del_file()

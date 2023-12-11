@@ -321,7 +321,6 @@ function export_calendar_contacts()
 
 function transfer_data()
 {
-   notify "Transfer data - Started"
    begin_process "Transfering backup to remote server"
    if [ "$1" = "" ] ; then
       DIR_BACKUP_WORK=`ls -ltr ${DIRAPP}|grep "zmigrate_"|awk '{print $9}'|tail -1`
@@ -329,8 +328,13 @@ function transfer_data()
       DIR_BACKUP_WORK=$1
    fi
    log_info "sshpass -p \"${SSHPASSWORD}\" rsync -avp ${DIR_BACKUP_WORK} ${SSHREMOTE}:${SSHDIR} --log-file=${LOGFILE}"
+
    sshpass -p ${SSHPASSWORD} rsync -avp ${DIR_BACKUP_WORK} ${SSHREMOTE}:${SSHDIR} --log-file=${LOGFILE}
-   notify "Transfer data - Terminated"
+
+   if [ $MAILX_ENABLED -eq 1 ] ; then
+      echo "Se termino de enviar con exito el backup a SFTP." | /usr/bin/mailx -r "$MAILX_FROM" -s "$MAILX_SUBJECT - OK" $MAILX_TO
+   if
+   end_process "Transfering backup to remote server"
 }
 
 function validate_remote_files()
