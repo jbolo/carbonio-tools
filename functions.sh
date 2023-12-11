@@ -1,5 +1,5 @@
 #!/bin/bash
-
+set -e
 #################################
 # Functions
 #################################
@@ -54,17 +54,18 @@ function end_process()
 function begin_shell()
 {
    log_info "#######################################"
-   trap 'end_shell 1' INT TERM EXIT ERR
+   trap 'end_shell $? $LINENO' INT TERM EXIT ERR
 }
 
 function end_shell()
 {
    last_date=`date +"%Y%m%d%H%M%S"`
 
-   if [[ "$1" == "1" ]] ; then
+   if [[ "$1" != "0" ]] ; then
       notify "Error ocurred"
+      log_error "Error $1 occurred on $2"
       log_error "End Process with error .. $last_date"
-      exit $1
+      exit 1
    fi
    log_info "End Process .. $last_date"
    exit
