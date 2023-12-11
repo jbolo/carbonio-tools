@@ -61,7 +61,7 @@ function end_shell()
 {
    last_date=`date +"%Y%m%d%H%M%S"`
 
-   if [[ "$1" != "0" ]] ; then
+   if [[ "$1" != "0" && "$1" != "" ]] ; then
       notify "Error ocurred"
       log_error "Error $1 occurred on $2"
       log_error "End Process with error .. $last_date"
