@@ -125,7 +125,7 @@ function count_mailbox_user()
    fi
 
    begin_process "Getting mailbox user details"
-   for j in `cat ${EMAILS_FILE} | egrep -v "^(spam|ham)"`; do
+   for j in `cat ${EMAILS_FILE}`; do
       log_info "Analizing account: ${j}"
       total=0;
 
@@ -166,7 +166,7 @@ function get_list_emails()
 
    begin_process "Getting emails"
    log_info "${ZMPROV} -l gaa ${DOMAIN} > ${EMAILS_FILE}"
-   ${ZMPROV} -l gaa ${DOMAIN} > "${EMAILS_FILE}"
+   ${ZMPROV} -l gaa ${DOMAIN}  | egrep -v "^(spam|ham)" > "${EMAILS_FILE}"
    cat "${EMAILS_FILE}"
    q_emails=`wc -l ${EMAILS_FILE} |awk '{print $1}'`
    log_info "Total emails: $q_emails"
