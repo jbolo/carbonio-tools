@@ -279,7 +279,7 @@ function export_alias()
    for email in `cat ${EMAILS_FILE}`; do
       let count=$count+1
       log_info "[$count/$q_emails] ${ZMPROV} ga $email | grep zimbraMailAlias > ${DIRALIAS}/$email.txt..." ;
-      ${ZMPROV} ga $email | grep zimbraMailAlias > ${DIRALIAS}/$email.txt ;
+      ${ZMPROV} ga $email | grep zimbraMailAlias > ${DIRALIAS}/$email.txt || log_info "zimbraMailAlias No ubicado" ;
       if [ ! -s "${DIRALIAS}/$email.txt" ]; then
          del_file "${DIRALIAS}/$email.txt"
       fi
