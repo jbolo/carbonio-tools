@@ -322,6 +322,9 @@ function export_calendar_contacts()
 
 function transfer_data()
 {
+   if [ "$TRANSFER_ENABLED" -ne "1" ] ; then
+      return 0
+   fi
    begin_process "Transfering backup to remote server"
    if [ "$1" = "" ] ; then
       DIR_BACKUP_WORK=`ls -ltr ${DIRAPP}|grep "zmigrate_"|awk '{print $9}'|tail -2|head -1`
@@ -513,6 +516,18 @@ function import_alias()
    end_process "Importing alias"
 }
 
+function delete_old_export()
+{
+   if [ "$DELETE_OLD_EXPORT_ENABLED" -ne "1" ] ; then
+      return 0
+   fi
+
+   begin_process "Deleting old exports"
+   log_info "find ${DIRAPP} -maxdepth 1 -name "zmigrate_" -type d -mtime +${DELETE_OLD_EXPORT_DAYS}"
+   find ${DIRAPP} -maxdepth 1 -name "zmigrate_*" -type d -mtime +${DELETE_OLD_EXPORT_DAYS} -print >> $LOGFILE
+   find ${DIRAPP} -maxdepth 1 -name "zmigrate_*" -type d -mtime +${DELETE_OLD_EXPORT_DAYS} -exec rm -rf "{}" \; >> $LOGFILE
+   end_process "Deleting old exports"
+}
 options=("--export" "--export-account" "--export-mailbox" "--export-dlist" "--export-alias" "--import" "--import-account" "--import-mailbox" "--import-dlist" "--import-alias" "--transfer" "--status")
 
 function usage()
@@ -543,38 +558,42 @@ case "$1" in
    "--export") # Export all
       set_context
       begin_shell
+      delete_old_export
       get_status_server
       export_account
       export_dlist
       export_alias
       export_mailbox
-      if [ $TRANSFER_ENABLED -eq 1 ] ; then
-         transfer_data ${DIRBACKUP}
-      fi
+      transfer_data ${DIRBACKUP}
       end_shell;;
    "--export-account") # Export account
       set_context
       begin_shell
+      delete_old_export
       export_account
       end_shell;;
    "--export-mailbox") # Export mailbox
       set_context
       begin_shell
+      delete_old_export
       export_mailbox
       end_shell;;
    "--export-dlist") # Export distribution list
       set_context
       begin_shell
+      delete_old_export
       export_dlist
       end_shell;;
    "--export-alias") # Export alias
       set_context
       begin_shell
+      delete_old_export
       export_alias
       end_shell;;
    "--export-calendar-contacts") # Export Calendar and Contacts
       set_context
       begin_shell
+      delete_old_export
       export_calendar_contacts
       end_shell;;
    "--import") # Import all

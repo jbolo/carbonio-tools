@@ -22,6 +22,10 @@ SSHDIR="/home/sftp_dir";
 # REMOTE DIRECTORY(IMPORT)
 DIRREMOTE="/home/sftp_dir/zmigrate_20231022130000"
 
+# DELETE OLD EXPORTS
+DELETE_OLD_EXPORT_ENABLED=0; export DELETE_OLD_EXPORT_ENABLED
+DELETE_OLD_EXPORT_DAYS=10; export DELETE_OLD_EXPORT_DAYS
+
 #########################################################
 
 # NOTIFICATION
