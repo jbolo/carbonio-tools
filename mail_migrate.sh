@@ -241,7 +241,7 @@ function export_mailbox()
    for email in `cat ${EMAILS_FILE}`; do
       let count=$count+1
       log_info "[$count/$q_emails] ${ZMMAILBOX} -z -m ${email}..." ;
-      ${ZMMAILBOX} -z -m ${email} -t 0 getRestURL '/?fmt=tgz' > ${DIRMAILBOX}/$email.tgz ;
+      ${ZMMAILBOX} -z -m ${email} -t 0 getRestURL '/?fmt=tgz' > ${DIRMAILBOX}/$email.tgz || log_info "zmmailbox devolvio una exception."
       log_info "${email} -- finished " ;
    done
 
@@ -426,14 +426,14 @@ function import_mailbox()
    log_info "Few things you should keep in mind before starting the mailbox export/import process:"
    log_info "1. Set the socket timeout high (i.e. zmlocalconfig -e socket_so_timeout=3000000; zmlocalconfig -reload)"
    log_info "2. Check if you have any attachment limits. If you have increase the value during the migration period"
-   log_ingo "   zmprov modifyConfig zimbraMtaMaxMessageSize 20000000"
+   log_info "   zmprov modifyConfig zimbraMtaMaxMessageSize 20000000"
    log_info "3. Set Public Service Host Name & Public Service Protocol to avoid any error/issue like below one"
 
    log_info "** resolve options:"
-   log_ingo "skip    - ignores duplicates of old items, it’s also the default conflict-resolution."
-   log_ingo "modify  - changes old items."
-   log_ingo "reset   - will delete the old subfolder (or entire mailbox if /)."
-   log_ingo "replace - will delete and re-enter them."
+   log_info "skip    - ignores duplicates of old items, it’s also the default conflict-resolution."
+   log_info "modify  - changes old items."
+   log_info "reset   - will delete the old subfolder (or entire mailbox if /)."
+   log_info "replace - will delete and re-enter them."
 
    q_emails=`wc -l ${DIRREMOTE}/emails.txt |awk '{print $1}'`
    count=0
