@@ -324,7 +324,7 @@ function transfer_data()
 {
    begin_process "Transfering backup to remote server"
    if [ "$1" = "" ] ; then
-      DIR_BACKUP_WORK=`ls -ltr ${DIRAPP}|grep "zmigrate_"|awk '{print $9}'|tail -1`
+      DIR_BACKUP_WORK=`ls -ltr ${DIRAPP}|grep "zmigrate_"|awk '{print $9}'|tail -2|head -1`
    else
       DIR_BACKUP_WORK=$1
    fi
