@@ -65,6 +65,11 @@ function end_shell()
       notify "Error ocurred"
       log_error "Error $1 occurred on $2"
       log_error "End Process with error .. $last_date"
+      if [ "$MAILX_ENABLED" -eq "1" ] ; then
+         log_info "Enviando Correo de Error" ;
+         TODAY_PROC=`date '+%Y/%m/%d'`
+         echo "Ocurrio un error en el proceso." | /usr/bin/mailx -r "$MAILX_FROM" -s "$MAILX_SUBJECT $TODAY_PROC - ERROR" $MAILX_TO
+      fi
       exit 1
    fi
    log_info "End Process .. $last_date"

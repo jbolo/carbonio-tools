@@ -337,7 +337,8 @@ function transfer_data()
 
    if [ $MAILX_ENABLED -eq 1 ] ; then
       log_info "Enviando Correo de confirmacion" ;
-      echo "Se termino de enviar con exito el backup a SFTP." | /usr/bin/mailx -r "$MAILX_FROM" -s "$MAILX_SUBJECT - OK" $MAILX_TO
+      TODAY_PROC=`date '+%Y/%m/%d'`
+      echo "Se termino de enviar con exito el backup a SFTP." | /usr/bin/mailx -r "$MAILX_FROM" -s "$MAILX_SUBJECT $TODAY_PROC - OK" $MAILX_TO
    fi
    end_process "Transfering backup to remote server"
 }
