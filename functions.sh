@@ -54,7 +54,7 @@ function end_process()
 function begin_shell()
 {
    log_info "#######################################"
-   trap 'end_shell $? $LINENO' INT TERM ERR
+   trap 'end_shell $? $LINENO' INT TERM EXIT ERR
 }
 
 function end_shell()
