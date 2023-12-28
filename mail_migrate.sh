@@ -24,54 +24,10 @@ fi
 
 DIRLOG="${DIRAPP}/log"
 TODAY_LINE=`date '+%Y%m%d%H%M%S'`
-LOGFILE="${DIRLOG}/migracion_${TODAY_LINE}.log"
+LOGFILE="${DIRLOG}/mail_migrate_${TODAY_LINE}.log"
 
-DIRBACKUP="${DIRAPP}/zmigrate_${TODAY_LINE}"
-
-DIRUSERPASS="${DIRBACKUP}/userpass"
-DIRUSERDATA="${DIRBACKUP}/userdata"
-DIRMAILBOX="${DIRBACKUP}/mailbox"
-DIRDLIST="${DIRBACKUP}/dlist"
-DIRALIAS="${DIRBACKUP}/alias"
-DIRCALENDAR="${DIRBACKUP}/calendar"
-DIRCONTACTS="${DIRBACKUP}/contacts"
-
-# DIRREMOTE is
-DIRREMOTEUSERPASS="${DIRREMOTE}/userpass"
-DIRREMOTEUSERDATA="${DIRREMOTE}/userdata"
-DIRREMOTEMAILBOX="${DIRREMOTE}/mailbox"
-DIRREMOTEDLIST="${DIRREMOTE}/dlist"
-DIRREMOTEALIAS="${DIRREMOTE}/alias"
-DIRREMOTECALENDAR="${DIRREMOTE}/calendar"
-DIRREMOTECONTACTS="${DIRREMOTE}/contacts"
-
-# CREATE DIRECTORIES
 if [ ! -d $DIRLOG ] ; then
    mkdir -p $DIRLOG
-fi
-
-if [ ! -d $DIRBACKUP ] ; then
-   mkdir -p $DIRBACKUP
-fi
-
-if [ ! -d $DIRUSERPASS ] ; then
-   mkdir -p $DIRUSERPASS
-fi
-
-if [ ! -d $DIRUSERDATA ] ; then
-   mkdir -p $DIRUSERDATA
-fi
-
-if [ ! -d $DIRMAILBOX ] ; then
-   mkdir -p $DIRMAILBOX
-fi
-
-if [ ! -d $DIRDLIST ] ; then
-   mkdir -p $DIRDLIST
-fi
-
-if [ ! -d $DIRALIAS ] ; then
-   mkdir -p $DIRALIAS
 fi
 
 . $DIRAPP/functions.sh
@@ -81,6 +37,46 @@ fi
 #################################
 function set_context()
 {
+   export TYPEB="full"
+   export DIRBACKUP="${DIRAPP}/backup_${TODAY_LINE}"
+   export DIRMAILBOX="${DIRBACKUP}/mailbox_${TODAY_LINE}"
+   if [[ "$1" == *"incremental"* ]] ; then
+      export TYPEB="incremental"
+      export DIRBACKUP="${DIRAPP}/backup_${TYPEB}"
+      export DIRMAILBOX="${DIRBACKUP}/mailbox"
+   fi
+
+   export DIRUSERPASS="${DIRBACKUP}/userpass_${TODAY_LINE}"
+   export DIRUSERDATA="${DIRBACKUP}/userdata_${TODAY_LINE}"
+   export DIRDLIST="${DIRBACKUP}/dlist_${TODAY_LINE}"
+   export DIRALIAS="${DIRBACKUP}/alias_${TODAY_LINE}"
+   export DIRCALENDAR="${DIRBACKUP}/calendar_${TODAY_LINE}"
+   export DIRCONTACTS="${DIRBACKUP}/contacts_${TODAY_LINE}"
+
+   # CREATE DIRECTORIES
+   if [ ! -d $DIRBACKUP ] ; then
+      mkdir -p $DIRBACKUP
+   fi
+
+   if [ ! -d $DIRUSERPASS ] ; then
+      mkdir -p $DIRUSERPASS
+   fi
+
+   if [ ! -d $DIRUSERDATA ] ; then
+      mkdir -p $DIRUSERDATA
+   fi
+
+   if [ ! -d $DIRMAILBOX ] ; then
+      mkdir -p $DIRMAILBOX
+   fi
+
+   if [ ! -d $DIRDLIST ] ; then
+      mkdir -p $DIRDLIST
+   fi
+
+   if [ ! -d $DIRALIAS ] ; then
+      mkdir -p $DIRALIAS
+   fi
    if [ -d $PATH_BIN_ZIMBRA ] ; then
       export CONTEXT="ZIMBRA"
       export USER_APP=$USER_ZIMBRA
@@ -120,7 +116,7 @@ function count_mailbox_user()
 
    if [ ! -f "$EMAILS_FILE" ]; then
       # file not exists
-      EMAILS_FILE="${DIRBACKUP}/emails.txt"
+      EMAILS_FILE="${DIRBACKUP}/emails_${TODAY_LINE}.txt"
       get_list_emails "$EMAILS_FILE"
    fi
 
@@ -193,7 +189,7 @@ function export_account()
 
    #################################################
 
-   EMAILS_FILE="${DIRBACKUP}/emails.txt"
+   EMAILS_FILE="${DIRBACKUP}/emails_${TODAY_LINE}.txt"
    get_list_emails "${EMAILS_FILE}"
 
    #################################################
@@ -225,8 +221,8 @@ function export_account()
 
 function export_mailbox()
 {
-   EMAILS_FILE="${DIRBACKUP}/emails.txt"
-   REPORT_FILE="${DIRBACKUP}/report.txt"
+   EMAILS_FILE="${DIRBACKUP}/emails_${TODAY_LINE}.txt"
+   REPORT_FILE="${DIRBACKUP}/report_${TODAY_LINE}.txt"
    if [ ! -f $EMAILS_FILE ]; then
       # file not exists
       get_list_emails $EMAILS_FILE
@@ -236,22 +232,41 @@ function export_mailbox()
    begin_process "Exporting mailbox"
 
    log_info "Exporting mailbox in : ${DIRMAILBOX}"
-   q_emails=`wc -l ${EMAILS_FILE} |awk '{print $1}'`
-   count=0
-   for email in `cat ${EMAILS_FILE}`; do
-      let count=$count+1
-      log_info "[$count/$q_emails] ${ZMMAILBOX} -z -m ${email}..." ;
-      ${ZMMAILBOX} -z -m ${email} -t 0 getRestURL '/?fmt=tgz' > ${DIRMAILBOX}/$email.tgz || log_info "zmmailbox devolvio una exception."
-      log_info "${email} -- finished " ;
-   done
+   if [ "$TYPEB" == "full" ] ; then
+      log_info "Execution of full backup"
+      q_emails=`wc -l ${EMAILS_FILE} |awk '{print $1}'`
+      count=0
+      for email in `cat ${EMAILS_FILE}`; do
+         let count=$count+1
+         log_info "[$count/$q_emails] ${ZMMAILBOX} -z -m ${email}..." ;
+         ${ZMMAILBOX} -z -m ${email} -t 0 getRestURL '/?fmt=tgz' > ${DIRMAILBOX}/${email}.tgz || log_info "zmmailbox devolvio una exception."
+         log_info "${email} -- finished " ;
+      done
+   fi
+   if [ "$TYPEB" == "incremental" ] ; then
+      log_info "Execution of incremental backup"
+      day_bk=`date -d '-24 hours' +"%m/%d/%Y"`
+      filename_tgz=`date -d '-24 hours' +"%Y%m%d.tgz"`
+      query="&query=date:${day_bk}"
+      log_info "Incremental for day: ${day_bk}"
 
+      q_emails=`wc -l ${EMAILS_FILE} |awk '{print $1}'`
+      count=0
+      for email in `cat ${EMAILS_FILE}`; do
+         mkdir -p ${DIRMAILBOX}/$email/
+         let count=$count+1
+         log_info "[$count/$q_emails] ${ZMMAILBOX} -z -m ${email}...${filename_tgz}" ;
+         ${ZMMAILBOX} -z -m ${email} -t 0 getRestURL "/?fmt=tgz${query}" > ${DIRMAILBOX}/${email}/${filename_tgz} || log_info "zmmailbox devolvio una exception."
+         log_info "${email} -- finished " ;
+      done
+   fi
    end_process "Exporting mailbox"
 }
 
 function export_dlist()
 {
    begin_process "Exporting distribution list"
-   DLIST_FILE="${DIRBACKUP}/dlist.txt"
+   DLIST_FILE="${DIRBACKUP}/dlist_${TODAY_LINE}.txt"
    log_info "${ZMPROV} gadl > $DLIST_FILE"
    ${ZMPROV} gadl > $DLIST_FILE
    cat $DLIST_FILE
@@ -265,7 +280,7 @@ function export_dlist()
 
 function export_alias()
 {
-   EMAILS_FILE="${DIRBACKUP}/emails.txt"
+   EMAILS_FILE="${DIRBACKUP}/emails_${TODAY_LINE}.txt"
    if [ ! -f $EMAILS_FILE ]; then
       # file not exists
       get_list_emails $EMAILS_FILE
@@ -293,7 +308,7 @@ function export_alias()
 
 function export_calendar_contacts()
 {
-   EMAILS_FILE="${DIRBACKUP}/emails.txt"
+   EMAILS_FILE="${DIRBACKUP}/emails_${TODAY_LINE}.txt"
 
    if [ ! -f $EMAILS_FILE ]; then
       # file not exists
@@ -350,8 +365,8 @@ function validate_remote_files()
       end_shell 1
    fi
 
-   export REMOTE_DOMAINS_FILE="${DIRREMOTE}/domains.txt"
-   export REMOTE_EMAILS_FILE="${DIRREMOTE}/emails.txt"
+   export REMOTE_DOMAINS_FILE=`ls ${DIRREMOTE}/domains_*.txt | sort | tail -1`
+   export REMOTE_EMAILS_FILE=`ls ${DIRREMOTE}/emails_*.txt | sort | tail -1`
 
    if [ ! -f "${REMOTE_DOMAINS_FILE}" ]; then
       echo "Domain file not exists."
@@ -361,6 +376,18 @@ function validate_remote_files()
       echo "Emails file not exists."
       end_shell 1
    fi
+
+   # DIRREMOTE
+   export DIRREMOTEUSERPASS=`ls -d ${DIRREMOTE}/userpass_* | sort | tail -1`
+   export DIRREMOTEUSERDATA=`ls -d ${DIRREMOTE}/userdata_* | sort | tail -1`
+   export DIRREMOTEMAILBOX=`ls -d ${DIRREMOTE}/mailbox_* | sort | tail -1`
+
+   export DLIST_FILE==`ls ${DIRREMOTE}/dlist_*.txt | sort | tail -1`
+   export DIRREMOTEDLIST=`ls -d ${DIRREMOTE}/dlist_* | sort | tail -1`
+   export DIRREMOTEALIAS=`ls -d ${DIRREMOTE}/alias_* | sort | tail -1`
+   export DIRREMOTECALENDAR=`ls -d ${DIRREMOTE}/calendar_* | sort | tail -1`
+   export DIRREMOTECONTACTS=`ls -d ${DIRREMOTE}/contacts_* | sort | tail -1`
+
 }
 
 function import_account()
@@ -435,16 +462,34 @@ function import_mailbox()
    log_info "reset   - will delete the old subfolder (or entire mailbox if /)."
    log_info "replace - will delete and re-enter them."
 
-   q_emails=`wc -l ${DIRREMOTE}/emails.txt |awk '{print $1}'`
-   count=0
-   for email in `cat ${DIRREMOTE}/emails.txt`; do
-      let count=$count+1
-      log_info "[$count/$q_emails] zmmailbox -z -m ${email}..."
-      zmmailbox -z -m ${email} -t 0 postRestURL "/?fmt=tgz&resolve=skip" ${DIRREMOTEMAILBOX}/$email.tgz ;
-      log_info "${email} -- finished " ;
-   done
+   if [[ "${DIRREMOTEMAILBOX}" != *"incremental"* ]] ; then
+      q_emails=`wc -l ${REMOTE_EMAILS_FILE} |awk '{print $1}'`
+      count=0
+      for email in `cat ${REMOTE_EMAILS_FILE}`; do
+         let count=$count+1
+         log_info "[$count/$q_emails] zmmailbox -z -m ${email}..."
+         zmmailbox -z -m ${email} -t 0 postRestURL "/?fmt=tgz&resolve=skip" ${DIRREMOTEMAILBOX}/$email.tgz ;
+         log_info "${email} -- finished " ;
+      done
 
-   count_mailbox_user "${DIRREMOTE}/emails.txt" "${DIRREMOTE}/report.final.txt"
+      count_mailbox_user "${REMOTE_EMAILS_FILE}" "${DIRREMOTE}/report.final_${TODAY_LINE}.txt"
+   fi
+
+   if [[ "${DIRREMOTEMAILBOX}" == *"incremental"* ]] ; then
+      q_emails=`wc -l ${REMOTE_EMAILS_FILE} |awk '{print $1}'`
+      count=0
+      | sort | tail -1
+
+      for email in `cat ${REMOTE_EMAILS_FILE}`; do
+         let count=$count+1
+         log_info "[$count/$q_emails] zmmailbox -z -m ${email}..."
+
+         for bk_file in `ls ${DIRREMOTEMAILBOX}/${email}/*.tgz | sort`; do
+            log_info "Processing bk: ${email} | ${bk_file}"
+            zmmailbox -z -m ${email} -t 0 postRestURL "/?fmt=tgz&resolve=replace" ${DIRREMOTEMAILBOX}/${email}/${bk_file} ;
+            log_info "${email} -- finished " ;
+      done
+   fi
    # Pending conciliate
 
    end_process "Importing mailbox"
@@ -458,9 +503,9 @@ function import_calendar_contacts()
 
    begin_process "Importing calendar and contacts"
 
-   q_emails=`wc -l ${DIRREMOTE}/emails.txt |awk '{print $1}'`
+   q_emails=`wc -l ${REMOTE_EMAILS_FILE} |awk '{print $1}'`
    count=0
-   for email in `cat ${DIRREMOTE}/emails.txt`; do
+   for email in `cat ${REMOTE_EMAILS_FILE}`; do
       let count=$count+1
       log_info "[$count/$q_emails] zmmailbox -z -m ${email}...Calendar"
       zmmailbox -z -m ${email} -t 0 postRestURL "/?fmt=tgz&resolve=skip" ${DIRREMOTECALENDAR}/$email.tgz ;
@@ -475,8 +520,12 @@ function import_calendar_contacts()
 
 function import_dlist()
 {
+   validate_remote_files
+
+   #################################################
+
    begin_process "Importing distribution list"
-   DLIST_FILE="${DIRREMOTE}/dlist.txt"
+
    if [ ! -f $DLIST_FILE ]; then
       log_info "Distribution List file not found"
       end_shell
@@ -497,7 +546,12 @@ function import_dlist()
 
 function import_alias()
 {
+   validate_remote_files
+
+   #################################################
+
    begin_process "Importing alias"
+
    q_alias=`ls ${DIRREMOTEALIAS} | wc -l | awk '{print $1}'`
    log_info "Total alias: $q_alias"
 
@@ -556,8 +610,18 @@ if [[ ! $(echo "${options[@]}" | grep -- "$1") ]]; then
 fi
 
 case "$1" in
-   "--export") # Export all
-      set_context
+   "--export-incremental") # Export mailbox incremental
+      set_context $1
+      begin_shell
+      get_status_server
+      export_account
+      export_dlist
+      export_alias
+      export_mailbox
+      transfer_data ${DIRBACKUP}
+      end_shell;;
+   "--export") # Export full
+      set_context $1
       begin_shell
       delete_old_export
       get_status_server
@@ -568,37 +632,37 @@ case "$1" in
       transfer_data ${DIRBACKUP}
       end_shell;;
    "--export-account") # Export account
-      set_context
+      set_context $1
       begin_shell
       delete_old_export
       export_account
       end_shell;;
    "--export-mailbox") # Export mailbox
-      set_context
+      set_context $1
       begin_shell
       delete_old_export
       export_mailbox
       end_shell;;
    "--export-dlist") # Export distribution list
-      set_context
+      set_context $1
       begin_shell
       delete_old_export
       export_dlist
       end_shell;;
    "--export-alias") # Export alias
-      set_context
+      set_context $1
       begin_shell
       delete_old_export
       export_alias
       end_shell;;
    "--export-calendar-contacts") # Export Calendar and Contacts
-      set_context
+      set_context $1
       begin_shell
       delete_old_export
       export_calendar_contacts
       end_shell;;
    "--import") # Import all
-      set_context
+      set_context $1
       begin_shell
       get_status_server
       import_account
@@ -607,17 +671,17 @@ case "$1" in
       import_mailbox
       end_shell;;
    "--import-account") # Import account
-      set_context
+      set_context $1
       begin_shell
       import_account
       end_shell;;
    "--import-mailbox") # Import mailbox
-      set_context
+      set_context $1
       begin_shell
       import_mailbox
       end_shell;;
    "--import-dlist") # Import distribution list
-      set_context
+      set_context $1
       begin_shell
       import_dlist
       end_shell;;
@@ -627,17 +691,17 @@ case "$1" in
       import_alias
       end_shell;;
    "--import-calendar-contacts") # Import Calendar and Contacts
-      set_context
+      set_context $1
       begin_shell
       import_calendar_contacts
       end_shell;;
    "--transfer") # Transfer data by rsync
-      set_context
+      set_context $1
       begin_shell
       transfer_data
       end_shell;;
    "--status") # Status
-      set_context
+      set_context $1
       get_status_server
       count_mailbox_user
       end_shell;;
