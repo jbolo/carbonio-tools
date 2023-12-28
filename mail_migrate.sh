@@ -583,7 +583,7 @@ function delete_old_export()
    find ${DIRAPP} -maxdepth 1 -name "zmigrate_*" -type d -mtime +${DELETE_OLD_EXPORT_DAYS} -exec rm -rf "{}" \; >> $LOGFILE
    end_process "Deleting old exports"
 }
-options=("--export" "--export-account" "--export-mailbox" "--export-dlist" "--export-alias" "--import" "--import-account" "--import-mailbox" "--import-dlist" "--import-alias" "--transfer" "--status")
+options=("--export-incremental" "--export" "--export-account" "--export-mailbox" "--export-dlist" "--export-alias" "--import" "--import-account" "--import-mailbox" "--import-dlist" "--import-alias" "--transfer" "--status")
 
 function usage()
 {
