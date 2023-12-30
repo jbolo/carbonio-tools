@@ -406,6 +406,10 @@ function import_account()
 
    for i in `cat ${REMOTE_DOMAINS_FILE} `; do
       log_info "Domain: ${i}"
+      if [[ $(echo "${list_domain}" | grep "$i") ]] ; then
+         log_info "Domain exists..."
+         continue
+      fi
       provi=`${ZMPROV} cd $i zimbraAuthMech zimbra`
       log_info "${provi}"
    done
