@@ -174,16 +174,16 @@ function export_account()
    cd ${DIRBACKUP}
 
    begin_process "Getting domains"
-   log_info "${ZMPROV} -l gad > domains.txt"
-   ${ZMPROV} -l gad > "${DIRBACKUP}/domains.txt"
+   log_info "${ZMPROV} -l gad > domains_${TODAY_LINE}.txt"
+   ${ZMPROV} -l gad > "${DIRBACKUP}/domains_${TODAY_LINE}.txt"
 
    if [[ ! "${DOMAIN}" == "" ]]; then
-      if [ ! `grep -c "${DOMAIN}" "${DIRBACKUP}/domains.txt"` -eq 1 ]; then
+      if [ ! `grep -c "${DOMAIN}" "${DIRBACKUP}/domains_${TODAY_LINE}.txt"` -eq 1 ]; then
          log_error "Domain ${DOMAIN} not exist."
          end_shell 1
       fi
       log_info "Using domain: ${DOMAIN}"
-      echo "${DOMAIN}" > "${DIRBACKUP}/domains.txt"
+      echo "${DOMAIN}" > "${DIRBACKUP}/domains_${TODAY_LINE}.txt"
    fi
    end_process "Getting domains"
 
