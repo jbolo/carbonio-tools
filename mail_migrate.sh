@@ -478,7 +478,6 @@ function import_mailbox()
    if [[ "${DIRREMOTEMAILBOX}" == *"incremental"* ]] ; then
       q_emails=`wc -l ${REMOTE_EMAILS_FILE} |awk '{print $1}'`
       count=0
-      | sort | tail -1
 
       for email in `cat ${REMOTE_EMAILS_FILE}`; do
          let count=$count+1
@@ -488,6 +487,7 @@ function import_mailbox()
             log_info "Processing bk: ${email} | ${bk_file}"
             zmmailbox -z -m ${email} -t 0 postRestURL "/?fmt=tgz&resolve=replace" ${DIRREMOTEMAILBOX}/${email}/${bk_file} ;
             log_info "${email} -- finished " ;
+         done
       done
    fi
    # Pending conciliate
