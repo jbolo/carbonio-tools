@@ -377,16 +377,18 @@ function validate_remote_files()
       end_shell 1
    fi
 
-   # DIRREMOTE
-   export DIRREMOTEUSERPASS=`ls -d ${DIRREMOTE}/userpass_* | sort | tail -1`
-   export DIRREMOTEUSERDATA=`ls -d ${DIRREMOTE}/userdata_* | sort | tail -1`
-   export DIRREMOTEMAILBOX=`ls -d ${DIRREMOTE}/mailbox_* | sort | tail -1`
+   DATE_PROC=`echo $REMOTE_EMAILS_FILE|awk -F"_" '{print $NF}'|cut -d"." -f1`
 
-   export DLIST_FILE==`ls ${DIRREMOTE}/dlist_*.txt | sort | tail -1`
-   export DIRREMOTEDLIST=`ls -d ${DIRREMOTE}/dlist_* | sort | tail -1`
-   export DIRREMOTEALIAS=`ls -d ${DIRREMOTE}/alias_* | sort | tail -1`
-   export DIRREMOTECALENDAR=`ls -d ${DIRREMOTE}/calendar_* | sort | tail -1`
-   export DIRREMOTECONTACTS=`ls -d ${DIRREMOTE}/contacts_* | sort | tail -1`
+   # DIRREMOTE
+   export DIRREMOTEUSERPASS=`ls -d ${DIRREMOTE}/userpass_${DATE_PROC} | sort | tail -1`
+   export DIRREMOTEUSERDATA=`ls -d ${DIRREMOTE}/userdata_${DATE_PROC} | sort | tail -1`
+   export DIRREMOTEMAILBOX=`ls -d ${DIRREMOTE}/mailbox_${DATE_PROC} | sort | tail -1`
+
+   export DLIST_FILE=`ls ${DIRREMOTE}/dlist_${DATE_PROC}.txt | sort | tail -1`
+   export DIRREMOTEDLIST=`ls -d ${DIRREMOTE}/dlist_${DATE_PROC} | sort | tail -1`
+   export DIRREMOTEALIAS=`ls -d ${DIRREMOTE}/alias_${DATE_PROC} | sort | tail -1`
+   export DIRREMOTECALENDAR=`ls -d ${DIRREMOTE}/calendar_${DATE_PROC} | sort | tail -1`
+   export DIRREMOTECONTACTS=`ls -d ${DIRREMOTE}/contacts_${DATE_PROC} | sort | tail -1`
 
 }
 
