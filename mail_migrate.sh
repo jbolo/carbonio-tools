@@ -475,7 +475,7 @@ function import_mailbox
       count=0
       for email in `cat ${REMOTE_EMAILS_FILE}`; do
          let count=$count+1
-         log_info "[$count/$q_emails] zmmailbox -z -m ${email}..."
+         log_info "[$count/$q_emails] zmmailbox -z -m ${email} -t 0 postRestURL '/?fmt=tgz&resolve=skip' ${DIRREMOTEMAILBOX}/$email.tgz"
          zmmailbox -z -m ${email} -t 0 postRestURL "/?fmt=tgz&resolve=skip" ${DIRREMOTEMAILBOX}/$email.tgz &
          N_PROC_PARALLEL=`awk -F"=" '$1=="N_PROC_PARALLEL" {print $2}' ${ENV_FILE} |cut -d";" -f1`
          nrwait $N_PROC_PARALLEL
@@ -494,7 +494,7 @@ function import_mailbox
 
          for bk_file in `ls ${DIRREMOTEMAILBOX}/${email}/*.tgz | sort`; do
             log_info "Processing bk: ${email} | ${bk_file}"
-            zmmailbox -z -m ${email} -t 0 postRestURL "/?fmt=tgz&resolve=replace" ${DIRREMOTEMAILBOX}/${email}/${bk_file} & || log_error "Error importing account ${email} ${bk_file}"; continue ;
+            zmmailbox -z -m ${email} -t 0 postRestURL "/?fmt=tgz&resolve=replace" ${DIRREMOTEMAILBOX}/${email}/${bk_file} &
             N_PROC_PARALLEL=`awk -F"=" '$1=="N_PROC_PARALLEL" {print $2}' ${ENV_FILE} |cut -d";" -f1`
             nrwait $N_PROC_PARALLEL
          done
