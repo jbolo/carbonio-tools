@@ -239,7 +239,7 @@ function export_mailbox()
       for email in `cat ${EMAILS_FILE}`; do
          let count=$count+1
          log_info "[$count/$q_emails] ${ZMMAILBOX} -z -m ${email}..." ;
-         ${ZMMAILBOX} -z -m ${email} -t 0 getRestURL '/?fmt=tgz' > ${DIRMAILBOX}/${email}.tgz || log_info "zmmailbox devolvio una exception."
+         ${ZMMAILBOX} -z -m ${email} -t 0 getRestURL '/?fmt=tgz' > ${DIRMAILBOX}/${email}.tgz || log_error "Error exporting ${email}"
          log_info "${email} -- finished " ;
       done
    fi
@@ -435,7 +435,8 @@ function import_account()
       shadowpass=`cat ${DIRREMOTEUSERPASS}/$i.shadow`
 
       log_info "Creating account"
-      ${ZMPROV} ca $i CHANGEme cn "$givenname" displayName "$displayname" givenName "$givenname"
+      ${ZMPROV} ca $i CHANGEme cn "$givenname" displayName "$displayname" givenName "$givenname" || log_error "Error creating account $i"; continue
+
       log_info "Updating account password"
       ${ZMPROV} ma $i userPassword "$shadowpass"
    done
@@ -534,8 +535,11 @@ function import_dlist()
 
    if [ ! -f $DLIST_FILE ]; then
       log_info "Distribution List file not found"
-      end_shell
+      return 0
    fi
+
+   q_dlist=`wc -l ${DLIST_FILE} | awk '{print $1}'`
+   log_info "Total dlist: $q_dlist"
 
    for listname in `cat ${DLIST_FILE}`; do
       log_info "Importing dlist: $listname"
@@ -563,7 +567,7 @@ function import_alias()
 
    if [ $q_alias -eq 0 ]; then
       log_info "Alias files not found."
-      end_shell
+      return 0
    fi
 
    for email_filename in `ls ${DIRREMOTEALIAS}`; do
