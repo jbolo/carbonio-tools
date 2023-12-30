@@ -1,5 +1,4 @@
 #!/bin/bash
-set -e
 ################################################################################
 #                    Migration Script Zimbra -> Carbonio                       #
 #                                                                              #
@@ -35,7 +34,7 @@ fi
 #################################
 # Main
 #################################
-function set_context()
+function set_context
 {
    export TYPEB="full"
    export DIRBACKUP="${DIRAPP}/backup_${TODAY_LINE}"
@@ -100,7 +99,7 @@ function set_context()
    validate_user $USER_APP
 }
 
-function validate_user()
+function validate_user
 {
    user=`whoami`
    if [[ ! "$user" == "${USER_APP}" ]]; then
@@ -109,7 +108,7 @@ function validate_user()
    fi
 }
 
-function count_mailbox_user()
+function count_mailbox_user
 {
    EMAILS_FILE="$1"
    REPORT_FILE="$2"
@@ -141,7 +140,7 @@ function count_mailbox_user()
    end_process "Getting mailbox user details"
 }
 
-function get_status_server()
+function get_status_server
 {
    begin_process "Getting status"
    version=`${ZMCONTROL} -v`
@@ -152,7 +151,7 @@ function get_status_server()
    end_process "Getting status"
 }
 
-function get_list_emails()
+function get_list_emails
 {
    EMAILS_FILE="$1"
    if [ -z "$1" ]; then
@@ -169,7 +168,7 @@ function get_list_emails()
    end_process "Getting emails"
 }
 
-function export_account()
+function export_account
 {
    cd ${DIRBACKUP}
 
@@ -219,7 +218,7 @@ function export_account()
    end_process "Exporting usersdata"
 }
 
-function export_mailbox()
+function export_mailbox
 {
    EMAILS_FILE="${DIRBACKUP}/emails_${TODAY_LINE}.txt"
    REPORT_FILE="${DIRBACKUP}/report_${TODAY_LINE}.txt"
@@ -239,8 +238,9 @@ function export_mailbox()
       for email in `cat ${EMAILS_FILE}`; do
          let count=$count+1
          log_info "[$count/$q_emails] ${ZMMAILBOX} -z -m ${email}..." ;
-         ${ZMMAILBOX} -z -m ${email} -t 0 getRestURL '/?fmt=tgz' > ${DIRMAILBOX}/${email}.tgz || log_error "Error exporting ${email}"
-         log_info "${email} -- finished " ;
+         ${ZMMAILBOX} -z -m ${email} -t 0 getRestURL '/?fmt=tgz' > ${DIRMAILBOX}/${email}.tgz &
+         N_PROC_PARALLEL=`awk -F"=" '$1=="N_PROC_PARALLEL" {print $2}' ${ENV_FILE} |cut -d";" -f1`
+         nrwait $N_PROC_PARALLEL
       done
    fi
    if [ "$TYPEB" == "incremental" ] ; then
@@ -256,14 +256,15 @@ function export_mailbox()
          mkdir -p ${DIRMAILBOX}/$email/
          let count=$count+1
          log_info "[$count/$q_emails] ${ZMMAILBOX} -z -m ${email}...${filename_tgz}" ;
-         ${ZMMAILBOX} -z -m ${email} -t 0 getRestURL "/?fmt=tgz${query}" > ${DIRMAILBOX}/${email}/${filename_tgz} || log_info "zmmailbox devolvio una exception."
-         log_info "${email} -- finished " ;
+         ${ZMMAILBOX} -z -m ${email} -t 0 getRestURL "/?fmt=tgz${query}" > ${DIRMAILBOX}/${email}/${filename_tgz} &
+         N_PROC_PARALLEL=`awk -F"=" '$1=="N_PROC_PARALLEL" {print $2}' ${ENV_FILE} |cut -d";" -f1`
+         nrwait $N_PROC_PARALLEL
       done
    fi
    end_process "Exporting mailbox"
 }
 
-function export_dlist()
+function export_dlist
 {
    begin_process "Exporting distribution list"
    DLIST_FILE="${DIRBACKUP}/dlist_${TODAY_LINE}.txt"
@@ -278,7 +279,7 @@ function export_dlist()
    end_process "Exporting distribution list"
 }
 
-function export_alias()
+function export_alias
 {
    EMAILS_FILE="${DIRBACKUP}/emails_${TODAY_LINE}.txt"
    if [ ! -f $EMAILS_FILE ]; then
@@ -306,7 +307,7 @@ function export_alias()
    end_process "Exporting alias"
 }
 
-function export_calendar_contacts()
+function export_calendar_contacts
 {
    EMAILS_FILE="${DIRBACKUP}/emails_${TODAY_LINE}.txt"
 
@@ -335,7 +336,7 @@ function export_calendar_contacts()
    end_process "Exporting calendar and contacts"
 }
 
-function transfer_data()
+function transfer_data
 {
    if [ "$TRANSFER_ENABLED" -ne "1" ] ; then
       return 0
@@ -358,7 +359,7 @@ function transfer_data()
    end_process "Transfering backup to remote server"
 }
 
-function validate_remote_files()
+function validate_remote_files
 {
    if [ ! -d "${DIRREMOTE}" ]; then
       echo "Backup Directory not exists."
@@ -392,7 +393,7 @@ function validate_remote_files()
 
 }
 
-function import_account()
+function import_account
 {
    validate_remote_files
 
@@ -448,7 +449,7 @@ function import_account()
 }
 
 
-function import_mailbox()
+function import_mailbox
 {
    validate_remote_files
 
@@ -475,8 +476,9 @@ function import_mailbox()
       for email in `cat ${REMOTE_EMAILS_FILE}`; do
          let count=$count+1
          log_info "[$count/$q_emails] zmmailbox -z -m ${email}..."
-         zmmailbox -z -m ${email} -t 0 postRestURL "/?fmt=tgz&resolve=skip" ${DIRREMOTEMAILBOX}/$email.tgz ;
-         log_info "${email} -- finished " ;
+         zmmailbox -z -m ${email} -t 0 postRestURL "/?fmt=tgz&resolve=skip" ${DIRREMOTEMAILBOX}/$email.tgz &
+         N_PROC_PARALLEL=`awk -F"=" '$1=="N_PROC_PARALLEL" {print $2}' ${ENV_FILE} |cut -d";" -f1`
+         nrwait $N_PROC_PARALLEL
       done
 
       count_mailbox_user "${REMOTE_EMAILS_FILE}" "${DIRREMOTE}/report.final_${TODAY_LINE}.txt"
@@ -492,8 +494,9 @@ function import_mailbox()
 
          for bk_file in `ls ${DIRREMOTEMAILBOX}/${email}/*.tgz | sort`; do
             log_info "Processing bk: ${email} | ${bk_file}"
-            zmmailbox -z -m ${email} -t 0 postRestURL "/?fmt=tgz&resolve=replace" ${DIRREMOTEMAILBOX}/${email}/${bk_file} ;
-            log_info "${email} -- finished " ;
+            zmmailbox -z -m ${email} -t 0 postRestURL "/?fmt=tgz&resolve=replace" ${DIRREMOTEMAILBOX}/${email}/${bk_file} & || log_error "Error importing account ${email} ${bk_file}"; continue ;
+            N_PROC_PARALLEL=`awk -F"=" '$1=="N_PROC_PARALLEL" {print $2}' ${ENV_FILE} |cut -d";" -f1`
+            nrwait $N_PROC_PARALLEL
          done
       done
    fi
@@ -502,7 +505,7 @@ function import_mailbox()
    end_process "Importing mailbox"
 }
 
-function import_calendar_contacts()
+function import_calendar_contacts
 {
    validate_remote_files
 
@@ -525,7 +528,7 @@ function import_calendar_contacts()
    end_process "Importing mailbox"
 }
 
-function import_dlist()
+function import_dlist
 {
    validate_remote_files
 
@@ -554,7 +557,7 @@ function import_dlist()
    end_process "Importing distribution list"
 }
 
-function import_alias()
+function import_alias
 {
    validate_remote_files
 
@@ -581,7 +584,7 @@ function import_alias()
    end_process "Importing alias"
 }
 
-function delete_old_export()
+function delete_old_export
 {
    if [ "$DELETE_OLD_EXPORT_ENABLED" -ne "1" ] ; then
       return 0
@@ -595,7 +598,7 @@ function delete_old_export()
 }
 options=("--export-incremental" "--export" "--export-account" "--export-mailbox" "--export-dlist" "--export-alias" "--import" "--import-account" "--import-mailbox" "--import-dlist" "--import-alias" "--transfer" "--status")
 
-function usage()
+function usage
 {
    echo "Script to mail migration - Zimbra&Carbonio."
    echo
