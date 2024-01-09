@@ -37,12 +37,39 @@ fi
 function set_context
 {
    export TYPEB="full"
-   export DIRBACKUP="${DIRAPP}/backup_${TODAY_LINE}"
+   export DIRBACKUP="${DIRAPP}/backup_${TYPEB}_${TODAY_LINE}"
    export DIRMAILBOX="${DIRBACKUP}/mailbox_${TODAY_LINE}"
    if [[ "$1" == *"incremental"* ]] ; then
       export TYPEB="incremental"
       export DIRBACKUP="${DIRAPP}/backup_${TYPEB}"
       export DIRMAILBOX="${DIRBACKUP}/mailbox"
+   fi
+
+   if [ -d $PATH_BIN_ZIMBRA ] ; then
+      export CONTEXT="ZIMBRA"
+      export USER_APP=$USER_ZIMBRA
+      export PATH_BIN_APP=$PATH_BIN_ZIMBRA
+      export ZMPROV="$PATH_BIN_ZIMBRA/zmprov"
+      export ZMCONTROL="$PATH_BIN_ZIMBRA/zmcontrol"
+      export ZMMAILBOX="$PATH_BIN_ZIMBRA/zmmailbox"
+
+   elif [ -d $PATH_BIN_CARBONIO ]; then
+      export CONTEXT="CARBONIO"
+      export USER_APP=$USER_CARBONIO
+      export PATH_BIN_APP=$PATH_BIN_CARBONIO
+      export ZMPROV="$PATH_BIN_CARBONIO/carbonio prov"
+      export ZMCONTROL="$PATH_BIN_CARBONIO/zmcontrol"
+      export ZMMAILBOX="$PATH_BIN_CARBONIO/zmmailbox"
+   else
+      log_error "Context type not identified."
+      end_shell 1
+   fi
+
+   validate_user $USER_APP
+
+   if [[ "$1" == *"import"* ]] ; then
+      validate_remote_files
+      return 0
    fi
 
    export DIRUSERPASS="${DIRBACKUP}/userpass_${TODAY_LINE}"
@@ -76,27 +103,6 @@ function set_context
    if [ ! -d $DIRALIAS ] ; then
       mkdir -p $DIRALIAS
    fi
-   if [ -d $PATH_BIN_ZIMBRA ] ; then
-      export CONTEXT="ZIMBRA"
-      export USER_APP=$USER_ZIMBRA
-      export PATH_BIN_APP=$PATH_BIN_ZIMBRA
-      export ZMPROV="$PATH_BIN_ZIMBRA/zmprov"
-      export ZMCONTROL="$PATH_BIN_ZIMBRA/zmcontrol"
-      export ZMMAILBOX="$PATH_BIN_ZIMBRA/zmmailbox"
-
-   elif [ -d $PATH_BIN_CARBONIO ]; then
-      export CONTEXT="CARBONIO"
-      export USER_APP=$USER_CARBONIO
-      export PATH_BIN_APP=$PATH_BIN_CARBONIO
-      export ZMPROV="$PATH_BIN_CARBONIO/carbonio prov"
-      export ZMCONTROL="$PATH_BIN_CARBONIO/zmcontrol"
-      export ZMMAILBOX="$PATH_BIN_CARBONIO/zmmailbox"
-   else
-      log_error "Context type not identified."
-      end_shell 1
-   fi
-
-   validate_user $USER_APP
 }
 
 function validate_user
@@ -477,11 +483,10 @@ function import_mailbox
          let count=$count+1
          log_info "[$count/$q_emails] zmmailbox -z -m ${email} -t 0 postRestURL '/?fmt=tgz&resolve=skip' ${DIRREMOTEMAILBOX}/$email.tgz"
          zmmailbox -z -m ${email} -t 0 postRestURL "/?fmt=tgz&resolve=skip" ${DIRREMOTEMAILBOX}/$email.tgz &
+         # curl --max-time 1800 -k -H "Transfer-Encoding: chunked" -u zextras:${ZEXTRAS_PASS} -p -T ${DIRREMOTEMAILBOX}/$email.tgz "https://localhost:6071/service/home/$email/?fmt=tgz&resolve=skip" &
          N_PROC_PARALLEL=`awk -F"=" '$1=="N_PROC_PARALLEL" {print $2}' ${ENV_FILE} |cut -d";" -f1`
          nrwait $N_PROC_PARALLEL
       done
-
-      count_mailbox_user "${REMOTE_EMAILS_FILE}" "${DIRREMOTE}/report.final_${TODAY_LINE}.txt"
    fi
 
    if [[ "${DIRREMOTEMAILBOX}" == *"incremental"* ]] ; then
@@ -494,13 +499,19 @@ function import_mailbox
 
          for bk_file in `ls ${DIRREMOTEMAILBOX}/${email}/*.tgz | sort`; do
             log_info "Processing bk: ${email} | ${bk_file}"
-            zmmailbox -z -m ${email} -t 0 postRestURL "/?fmt=tgz&resolve=replace" ${DIRREMOTEMAILBOX}/${email}/${bk_file} &
-            N_PROC_PARALLEL=`awk -F"=" '$1=="N_PROC_PARALLEL" {print $2}' ${ENV_FILE} |cut -d";" -f1`
-            nrwait $N_PROC_PARALLEL
+                        file_size=$(wc -c "${bk_file}" | cut -d' ' -f1)
+                        if [ "$file_size" == "0" ]; then
+                           log_info "File empty: ${bk_file}"
+                           continue
+                        fi
+                        log_info "zmmailbox -z -m ${email} -t 0 postRestURL '/?fmt=tgz&resolve=replace' ${bk_file}"
+            zmmailbox -z -m ${email} -t 0 postRestURL "/?fmt=tgz&resolve=replace" ${bk_file}
+            # curl --max-time 1800 -k -H "Transfer-Encoding: chunked" -u zextras:${ZEXTRAS_PASS} -p -T ${DIRREMOTEMAILBOX}/${email}/${bk_file} "https://localhost:6071/service/home/$email/?fmt=tgz&resolve=replace" &
+            # N_PROC_PARALLEL=`awk -F"=" '$1=="N_PROC_PARALLEL" {print $2}' ${ENV_FILE} |cut -d";" -f1`
+            # nrwait $N_PROC_PARALLEL
          done
       done
    fi
-   # Pending conciliate
 
    end_process "Importing mailbox"
 }
@@ -596,7 +607,7 @@ function delete_old_export
    find ${DIRAPP} -maxdepth 1 -name "zmigrate_*" -type d -mtime +${DELETE_OLD_EXPORT_DAYS} -exec rm -rf "{}" \; >> $LOGFILE
    end_process "Deleting old exports"
 }
-options=("--export-incremental" "--export" "--export-account" "--export-mailbox" "--export-dlist" "--export-alias" "--import" "--import-account" "--import-mailbox" "--import-dlist" "--import-alias" "--transfer" "--status")
+options=("--export-incremental" "--export" "--export-account" "--export-mailbox" "--export-dlist" "--export-alias" "--import-incremental" "--import" "--import-account" "--import-mailbox" "--import-dlist" "--import-alias" "--transfer" "--status")
 
 function usage
 {
@@ -673,6 +684,12 @@ case "$1" in
       begin_shell
       delete_old_export
       export_calendar_contacts
+      end_shell;;
+   "--import-incremental") # Import all and incremental mailbox
+      set_context $1
+      begin_shell
+      get_status_server
+      import_mailbox
       end_shell;;
    "--import") # Import all
       set_context $1
