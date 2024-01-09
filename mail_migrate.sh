@@ -243,7 +243,7 @@ function export_mailbox
       count=0
       for email in `cat ${EMAILS_FILE}`; do
          let count=$count+1
-         log_info "[$count/$q_emails] ${ZMMAILBOX} -z -m ${email}..." ;
+         log_info "[$count/$q_emails] ${ZMMAILBOX} -z -m ${email} -t 0 getRestURL '/?fmt=tgz' > ${DIRMAILBOX}/${email}.tgz" ;
          ${ZMMAILBOX} -z -m ${email} -t 0 getRestURL '/?fmt=tgz' > ${DIRMAILBOX}/${email}.tgz &
          N_PROC_PARALLEL=`awk -F"=" '$1=="N_PROC_PARALLEL" {print $2}' ${ENV_FILE} |cut -d";" -f1`
          nrwait $N_PROC_PARALLEL
@@ -251,9 +251,10 @@ function export_mailbox
    fi
    if [ "$TYPEB" == "incremental" ] ; then
       log_info "Execution of incremental backup"
-      day_bk=`date -d '-24 hours' +"%m/%d/%Y"`
-      filename_tgz=`date -d '-24 hours' +"%Y%m%d.tgz"`
-      query="&query=date:${day_bk}"
+      day_after=`date -d '-48 hours' +"%m/%d/%Y"`
+          day_before=`date +"%m/%d/%Y"`
+      filename_tgz=`date -d '-24 hours' +"%Y-%m-%d.tgz"`
+      query="&query=after:\"${day_after}\" and before:\"${day_before}\""
       log_info "Incremental for day: ${day_bk}"
 
       q_emails=`wc -l ${EMAILS_FILE} |awk '{print $1}'`
@@ -261,7 +262,7 @@ function export_mailbox
       for email in `cat ${EMAILS_FILE}`; do
          mkdir -p ${DIRMAILBOX}/$email/
          let count=$count+1
-         log_info "[$count/$q_emails] ${ZMMAILBOX} -z -m ${email}...${filename_tgz}" ;
+         log_info "[$count/$q_emails] ${ZMMAILBOX} -z -m ${email} -t 0 getRestURL '/?fmt=tgz${query}' > ${DIRMAILBOX}/${email}/${filename_tgz}" ;
          ${ZMMAILBOX} -z -m ${email} -t 0 getRestURL "/?fmt=tgz${query}" > ${DIRMAILBOX}/${email}/${filename_tgz} &
          N_PROC_PARALLEL=`awk -F"=" '$1=="N_PROC_PARALLEL" {print $2}' ${ENV_FILE} |cut -d";" -f1`
          nrwait $N_PROC_PARALLEL
