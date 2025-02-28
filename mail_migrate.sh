@@ -418,6 +418,7 @@ function import_account
          log_info "Domain exists..."
          ${ZMPROV} md $i zimbraPublicServiceProtocol https
          ${ZMPROV} md $i zimbraPublicServicePort 443
+         ${ZMPROV} md $i zimbraPrefTimeZoneId "America/Bogota"
          continue
       fi
       provi=`${ZMPROV} cd $i zimbraAuthMech zimbra`
