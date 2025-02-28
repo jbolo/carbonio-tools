@@ -416,10 +416,16 @@ function import_account
       log_info "Domain: ${i}"
       if [[ $(echo "${list_domain}" | grep "$i") ]] ; then
          log_info "Domain exists..."
+         ${ZMPROV} md $i zimbraPublicServiceProtocol https
+         ${ZMPROV} md $i zimbraPublicServicePort 443
          continue
       fi
       provi=`${ZMPROV} cd $i zimbraAuthMech zimbra`
       log_info "${provi}"
+
+      ${ZMPROV} md $i zimbraPublicServiceProtocol https
+      ${ZMPROV} md $i zimbraPublicServicePort 443
+      ${ZMPROV} md $i zimbraPrefTimeZoneId "America/Bogota"
    done
 
    log_info "List of Domains:"
@@ -477,6 +483,21 @@ function import_mailbox
    log_info "reset   - will delete the old subfolder (or entire mailbox if /)."
    log_info "replace - will delete and re-enter them."
 
+   log_info "Incrementing value timeout during the migration period"
+   zmlocalconfig -e socket_so_timeout=7200000
+
+   zmprov mcf zimbraReverseProxyUpstreamReadTimeout 120m
+   zmprov mcf zimbraReverseProxySSLSessionTimeout 120m
+   zmprov mcf zimbraReverseProxyUpstreamSendTimeout 1200m
+
+   log_info "Incrementing value attachment limits=50MB"
+   zmprov mcf zimbraMtaMaxMessageSize 51200000
+   zmprov mcf zimbraFileUploadMaxSize 52428800
+   zmprov mcf zimbraMailContentMaxSize 51200000
+
+   zmcontrol restart
+   sleep 30
+
    if [[ "${DIRREMOTEMAILBOX}" != *"incremental"* ]] ; then
       q_emails=`wc -l ${REMOTE_EMAILS_FILE} |awk '{print $1}'`
       count=0
@@ -513,6 +534,20 @@ function import_mailbox
          done
       done
    fi
+
+   log_info "Reseting value timeout during the migration period"
+   zmlocalconfig -e socket_so_timeout=3000000
+
+   zmprov mcf zimbraReverseProxyUpstreamReadTimeout 60s
+   zmprov mcf zimbraReverseProxySSLSessionTimeout 10m
+   zmprov mcf zimbraReverseProxyUpstreamSendTimeout 60s
+
+   log_info "Reseting value attachment limits=25MB"
+   zmprov mcf zimbraMtaMaxMessageSize 25600000
+   zmprov mcf zimbraFileUploadMaxSize 26214400
+   zmprov mcf zimbraMailContentMaxSize 25600000
+
+   zmcontrol restart
 
    end_process "Importing mailbox"
 }
