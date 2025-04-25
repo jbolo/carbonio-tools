@@ -218,7 +218,7 @@ function export_account
    for i in `cat ${EMAILS_FILE}`; do
       let count=$count+1
       log_info "[$count/$q_emails] ${ZMPROV} ga ${i}..."
-      ${ZMPROV} ga ${i}  | grep -i Name: > ${DIRUSERDATA}/${i}.txt ;
+      ${ZMPROV} ga ${i} | grep -E "^(cn:|sn:|displayName:|givenName:|zimbraPrefIdentityName:)" > ${DIRUSERDATA}/${i}.txt
    done
 
    end_process "Exporting usersdata"
@@ -337,6 +337,7 @@ function export_calendar_contacts
 
       log_info "[$count/$q_emails] ${ZMMAILBOX} -z -m ${email}.../Contacts/?fmt=tgz" ;
       ${ZMMAILBOX} -z -m ${email} -t 0 getRestURL '/Contacts/?fmt=tgz' > ${DIRCONTACTS}/$email.tgz ;
+      ${ZMMAILBOX} -z -m ${email} -t 0 getRestURL '/Emailed Contacts/?fmt=tgz' > ${DIRCONTACTS}/emailed_$email.tgz ;
       log_info "${email} -- finished " ;
    done
 
@@ -445,14 +446,17 @@ function import_account
    do
       let count=$count+1
       log_info "[$count/$q_emails] Account ${i}"
+      cn=`grep cn: ${DIRREMOTEUSERDATA}/$i.txt | cut -d ":" -f2`
+      sn=`grep sn: ${DIRREMOTEUSERDATA}/$i.txt | cut -d ":" -f2`
       givenname=`grep givenName: ${DIRREMOTEUSERDATA}/$i.txt | cut -d ":" -f2`
       displayname=`grep displayName: ${DIRREMOTEUSERDATA}/$i.txt | cut -d ":" -f2`
+      zimbraprefidentityname=`grep zimbraPrefIdentityName: ${DIRREMOTEUSERDATA}/$i.txt | cut -d ":" -f2`
       shadowpass=`cat ${DIRREMOTEUSERPASS}/$i.shadow`
 
       log_info "Creating account"
-      ${ZMPROV} ca $i CHANGEme cn "$givenname" displayName "$displayname" givenName "$givenname" || log_error "Error creating account $i"; continue
+      ${ZMPROV} ca $i CHANGEme sn "$sn" cn "$cn" displayName "$displayname" givenName "$givenname" zimbraPrefIdentityName "$zimbraprefidentityname"|| log_error "Error creating account $i"; continue
 
-      log_info "Updating account password"
+      log_info "Updating account password"zimbraprefidentityname
       ${ZMPROV} ma $i userPassword "$shadowpass"
    done
 
@@ -570,6 +574,10 @@ function import_calendar_contacts
 
       log_info "[$count/$q_emails] zmmailbox -z -m ${email}...Contacts"
       zmmailbox -z -m ${email} -t 0 postRestURL "/?fmt=tgz&resolve=skip" ${DIRREMOTECONTACTS}/$email.tgz ;
+
+      log_info "[$count/$q_emails] zmmailbox -z -m ${email}...Emailed Contacts"
+      zmmailbox -z -m ${email} -t 0 postRestURL "/?fmt=tgz&resolve=skip" ${DIRREMOTECONTACTS}/emailed_$email.tgz ;
+
       log_info "${email} -- finished " ;
    done
 
