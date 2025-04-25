@@ -6,7 +6,7 @@
 #                                                                              #
 # Change History                                                               #
 # 02/10/2023   Jonathan Bolo   Initial Version.                                #
-#                                                                              #
+# 25/04/2025   Jonathan Bolo   Added signature feature.                        #
 ################################################################################
 
 #################################
@@ -78,6 +78,7 @@ function set_context
    export DIRALIAS="${DIRBACKUP}/alias_${TODAY_LINE}"
    export DIRCALENDAR="${DIRBACKUP}/calendar_${TODAY_LINE}"
    export DIRCONTACTS="${DIRBACKUP}/contacts_${TODAY_LINE}"
+   export DIRSIGNATURE="${DIRBACKUP}/user_signature_${TODAY_LINE}"
 
    # CREATE DIRECTORIES
    if [ ! -d $DIRBACKUP ] ; then
@@ -344,6 +345,43 @@ function export_calendar_contacts
    end_process "Exporting calendar and contacts"
 }
 
+function export_signatures
+{
+   EMAILS_FILE="${DIRBACKUP}/emails_${TODAY_LINE}.txt"
+
+   if [ ! -f $EMAILS_FILE ]; then
+      # file not exists
+      get_list_emails $EMAILS_FILE
+   fi
+
+   begin_process "Exporting signatures"
+
+   log_info "Exporting signatures in : ${DIRCALENDAR}"
+
+   q_emails=`wc -l ${EMAILS_FILE} |awk '{print $1}'`
+   count=0
+   for email in `cat ${EMAILS_FILE}`; do
+      let count=$count+1
+      zimbraSignatureName
+      
+      log_info "[$count/$q_emails] ${ZMPROV} ga $email zimbraSignatureName > ${DIRSIGNATURE}/${email}_name.txt..." ;
+      ${ZMPROV} ga $email zimbraSignatureName > ${DIRSIGNATURE}/${email}_name.txt || log_info "zimbraSignatureName No ubicado" ;
+      if [ ! -s "${DIRSIGNATURE}/${email}_name.txt" ]; then
+         del_file "${DIRSIGNATURE}/${email}_name.txt"
+      fi
+
+      log_info "[$count/$q_emails] ${ZMPROV} ga $email zimbraPrefMailSignatureHTML > ${DIRSIGNATURE}/${email}_html.txt..." ;
+      ${ZMPROV} ga $email zimbraPrefMailSignatureHTML > ${DIRSIGNATURE}/${email}_html.txt || log_info "zimbraPrefMailSignatureHTML No ubicado" ;
+      if [ ! -s "${DIRSIGNATURE}/${email}_html.txt" ]; then
+         del_file "${DIRSIGNATURE}/${email}_html.txt"
+      fi
+
+      log_info "${email} -- finished " ;
+   done
+
+   end_process "Exporting calendar and contacts"
+}
+
 function transfer_data
 {
    if [ "$TRANSFER_ENABLED" -ne "1" ] ; then
@@ -398,7 +436,7 @@ function validate_remote_files
    export DIRREMOTEALIAS=`ls -d ${DIRREMOTE}/alias_${DATE_PROC} | sort | tail -1`
    export DIRREMOTECALENDAR=`ls -d ${DIRREMOTE}/calendar_${DATE_PROC} | sort | tail -1`
    export DIRREMOTECONTACTS=`ls -d ${DIRREMOTE}/contacts_${DATE_PROC} | sort | tail -1`
-
+   export DIRREMOTESIGNATURE=`ls -d ${DIRREMOTE}/user_signature_${DATE_PROC} | sort | tail -1`
 }
 
 function import_account
@@ -584,6 +622,37 @@ function import_calendar_contacts
    end_process "Importing mailbox"
 }
 
+function import_signatures
+{
+   validate_remote_files
+
+   #################################################
+
+   begin_process "Importing calendar and contacts"
+
+   q_emails=`wc -l ${REMOTE_EMAILS_FILE} |awk '{print $1}'`
+   count=0
+   for email in `cat ${REMOTE_EMAILS_FILE}`; do
+      let count=$count+1
+
+      log_info "[$count/$q_emails] ${email}"
+      if [ ! -f $DIRREMOTESIGNATURE/$email"_name.txt" ]; then
+         log_info "Signature for ${email} not found."
+         continue;
+      fi
+
+      sig_name=`cat ${DIRREMOTESIGNATURE}/$email"_name.txt"`
+      sig_html=`cat ${DIRREMOTESIGNATURE}/$email"_html.txt"`
+
+      log_info "[$count/$q_emails] ${ZMPROV} csig ${email}..."
+      ${ZMPROV} csig $email '$sig_name' zimbraPrefMailSignatureHTML '$sig_html'
+
+      log_info "${email} -- finished " ;
+   done
+
+   end_process "Importing mailbox"
+}
+
 function import_dlist
 {
    validate_remote_files
@@ -698,6 +767,7 @@ case "$1" in
       export_dlist
       export_alias
       export_mailbox
+      export_signatures
       transfer_data ${DIRBACKUP}
       end_shell;;
    "--export-account") # Export account
@@ -744,6 +814,7 @@ case "$1" in
       import_dlist
       import_alias
       import_mailbox
+      import_signatures
       end_shell;;
    "--import-account") # Import account
       set_context $1
