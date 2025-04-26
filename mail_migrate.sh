@@ -7,6 +7,7 @@
 # Change History                                                               #
 # 02/10/2023   Jonathan Bolo   Initial Version.                                #
 # 25/04/2025   Jonathan Bolo   Added signature feature.                        #
+# 25/04/2025   Jonathan Bolo   Added emails rules feature.                     #
 ################################################################################
 
 #################################
