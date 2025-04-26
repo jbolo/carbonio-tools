@@ -79,6 +79,7 @@ function set_context
    export DIRCALENDAR="${DIRBACKUP}/calendar_${TODAY_LINE}"
    export DIRCONTACTS="${DIRBACKUP}/contacts_${TODAY_LINE}"
    export DIRSIGNATURE="${DIRBACKUP}/user_signature_${TODAY_LINE}"
+   export DIRRULES="${DIRBACKUP}/rules_${TODAY_LINE}"
 
    # CREATE DIRECTORIES
    if [ ! -d $DIRBACKUP ] ; then
@@ -168,7 +169,7 @@ function get_list_emails
 
    begin_process "Getting emails"
    log_info "${ZMPROV} -l gaa ${DOMAIN} > ${EMAILS_FILE}"
-   ${ZMPROV} -l gaa ${DOMAIN}  | egrep -v "^(spam|ham)" > "${EMAILS_FILE}"
+   ${ZMPROV} -l gaa ${DOMAIN}  | egrep -v "^(spam|ham|galsync|virus)" > "${EMAILS_FILE}"
    cat "${EMAILS_FILE}"
    q_emails=`wc -l ${EMAILS_FILE} |awk '{print $1}'`
    log_info "Total emails: $q_emails"
@@ -303,7 +304,7 @@ function export_alias
    for email in `cat ${EMAILS_FILE}`; do
       let count=$count+1
       log_info "[$count/$q_emails] ${ZMPROV} ga $email | grep zimbraMailAlias > ${DIRALIAS}/$email.txt..." ;
-      ${ZMPROV} ga $email | grep zimbraMailAlias > ${DIRALIAS}/$email.txt || log_info "zimbraMailAlias No ubicado" ;
+      ${ZMPROV} ga $email zimbraMailAlias | grep zimbraMailAlias | awk '{print $2}' > ${DIRALIAS}/$email.txt || log_info "zimbraMailAlias No ubicado" ;
       if [ ! -s "${DIRALIAS}/$email.txt" ]; then
          del_file "${DIRALIAS}/$email.txt"
       fi
@@ -356,27 +357,72 @@ function export_signatures
 
    begin_process "Exporting signatures"
 
-   log_info "Exporting signatures in : ${DIRCALENDAR}"
+   log_info "Exporting signatures in : ${DIRSIGNATURE}"
 
    q_emails=`wc -l ${EMAILS_FILE} |awk '{print $1}'`
    count=0
    for email in `cat ${EMAILS_FILE}`; do
       let count=$count+1
-      zimbraSignatureName
-      
+
       log_info "[$count/$q_emails] ${ZMPROV} ga $email zimbraSignatureName > ${DIRSIGNATURE}/${email}_name.txt..." ;
-      ${ZMPROV} ga $email zimbraSignatureName > ${DIRSIGNATURE}/${email}_name.txt || log_info "zimbraSignatureName No ubicado" ;
+      ${ZMPROV} ga $email zimbraSignatureName | grep zimbraSignatureName | awk '{print $2}' > ${DIRSIGNATURE}/${email}_name.txt
+
       if [ ! -s "${DIRSIGNATURE}/${email}_name.txt" ]; then
+         log_info "Signature for ${email} not found."
          del_file "${DIRSIGNATURE}/${email}_name.txt"
+         log_info "${email} -- finished " ;
+         continue;
       fi
 
       log_info "[$count/$q_emails] ${ZMPROV} ga $email zimbraPrefMailSignatureHTML > ${DIRSIGNATURE}/${email}_html.txt..." ;
-      ${ZMPROV} ga $email zimbraPrefMailSignatureHTML > ${DIRSIGNATURE}/${email}_html.txt || log_info "zimbraPrefMailSignatureHTML No ubicado" ;
-      if [ ! -s "${DIRSIGNATURE}/${email}_html.txt" ]; then
-         del_file "${DIRSIGNATURE}/${email}_html.txt"
+      ${ZMPROV} ga $email zimbraPrefMailSignatureHTML | awk '/^zimbraPrefMailSignatureHTML:/ {flag=1} flag {print}' | sed 's/^zimbraPrefMailSignatureHTML: //' > ${DIRSIGNATURE}/${email}_html.txt
+      log_info "${email} -- finished " ;
+   done
+
+   end_process "Exporting signatures"
+}
+
+function export_rules
+{
+   EMAILS_FILE="${DIRBACKUP}/emails_${TODAY_LINE}.txt"
+
+   if [ ! -f $EMAILS_FILE ]; then
+      # file not exists
+      get_list_emails $EMAILS_FILE
+   fi
+
+   begin_process "Exporting rules"
+
+   log_info "Exporting rules in : ${DIRRULES}"
+
+   q_emails=`wc -l ${EMAILS_FILE} |awk '{print $1}'`
+   count=0
+   for email in `cat ${EMAILS_FILE}`; do
+      let count=$count+1
+      
+      log_info "[$count/$q_emails] ${ZMPROV} ga $email zimbraMailSieveScript > ${DIRRULES}/${email}_rules.txt..." ;
+      ${ZMPROV} ga $email zimbraMailSieveScript > ${DIRRULES}/${email}_rules.txt
+
+      sed -i -e "1d" ${DIRRULES}/${email}_rules.txt
+      sed -i -e 's/zimbraMailSieveScript: //g' ${DIRRULES}/${email}_rules.txt
+      sed -i '/^$/d' ${DIRRULES}/${email}_rules.txt
+
+      if [ ! -s "${DIRRULES}/${email}_rules.txt" ]; then
+         log_info "Rules for ${email} not found."
+         del_file "${DIRRULES}/${email}_rules.txt";
+         log_info "${email} -- finished " ;
+         continue;
       fi
 
-      log_info "${email} -- finished " ;
+      grep 'fileinto' ${DIRRULES}/${email}_rules.txt | sed -n 's/.*fileinto "\([^"]*\)".*/\1/p' | sort -u > ${DIRRULES}/${email}_folders.txt
+      if [ ! -s "${DIRRULES}/${email}_folders.txt" ]; then
+         log_info "Folder Rules for ${email} not found."
+         del_file "${DIRRULES}/${email}_folders.txt";
+      fi
+      q_folder=`wc -l ${DIRRULES}/${email}_folders.txt | awk '{print $1}'`
+      log_info "${q_folder} folders found for ${email}"
+      log_info "${email} -- finished ";
+
    done
 
    end_process "Exporting calendar and contacts"
@@ -437,6 +483,7 @@ function validate_remote_files
    export DIRREMOTECALENDAR=`ls -d ${DIRREMOTE}/calendar_${DATE_PROC} | sort | tail -1`
    export DIRREMOTECONTACTS=`ls -d ${DIRREMOTE}/contacts_${DATE_PROC} | sort | tail -1`
    export DIRREMOTESIGNATURE=`ls -d ${DIRREMOTE}/user_signature_${DATE_PROC} | sort | tail -1`
+   export DIRREMOTERULES=`ls -d ${DIRREMOTE}/rules_${DATE_PROC} | sort | tail -1`
 }
 
 function import_account
@@ -653,6 +700,44 @@ function import_signatures
    end_process "Importing mailbox"
 }
 
+function import_rules
+{
+   validate_remote_files
+
+   #################################################
+
+   begin_process "Importing rules"
+
+   q_emails=`wc -l ${REMOTE_EMAILS_FILE} |awk '{print $1}'`
+   count=0
+   for email in `cat ${REMOTE_EMAILS_FILE}`; do
+      let count=$count+1
+
+      log_info "[$count/$q_emails] ${email}"
+      if [ ! -f $DIRREMOTERULES/$email"_rules.txt" ]; then
+         log_info "Rules for ${email} not found."
+         continue;
+      fi
+
+      if [ -f $DIRREMOTERULES/$email"_folders.txt" ]; then
+         log_info "Folders Rule for ${email} found."
+
+         for folder in `cat $DIRREMOTERULES/$email"_folders.txt"`; do
+            log_info "Creating folder: $folder"
+            log_info "zmmailbox -z -m $email cf -V message $folder"
+            zmmailbox -z -m $email cf -V message "$folder"
+         done
+      fi
+
+      log_info "${ZMPROV} ma $email zimbraMailSieveScript 'cat ${DIRREMOTERULES}/${email}_rules.txt'"
+      ${ZMPROV} ma $email zimbraMailSieveScript "`cat ${DIRREMOTERULES}/${email}_rules.txt`"
+
+      log_info "${email} -- finished " ;
+   done
+
+   end_process "Importing rules"
+}
+
 function import_dlist
 {
    validate_remote_files
@@ -768,6 +853,7 @@ case "$1" in
       export_alias
       export_mailbox
       export_signatures
+      export_rules
       transfer_data ${DIRBACKUP}
       end_shell;;
    "--export-account") # Export account
@@ -815,6 +901,7 @@ case "$1" in
       import_alias
       import_mailbox
       import_signatures
+      import_rules
       end_shell;;
    "--import-account") # Import account
       set_context $1
