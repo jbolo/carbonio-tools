@@ -170,7 +170,7 @@ function get_list_emails
 
    begin_process "Getting emails"
    log_info "${ZMPROV} -l gaa ${DOMAIN} > ${EMAILS_FILE}"
-   ${ZMPROV} -l gaa ${DOMAIN}  | egrep -v "^(spam|ham|galsync|virus)" > "${EMAILS_FILE}"
+   ${ZMPROV} -l gaa ${DOMAIN}  | egrep -v "^(spam|ham|galsync|virus|zextras)" > "${EMAILS_FILE}"
    cat "${EMAILS_FILE}"
    q_emails=`wc -l ${EMAILS_FILE} |awk '{print $1}'`
    log_info "Total emails: $q_emails"
