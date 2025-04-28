@@ -106,6 +106,22 @@ function set_context
    if [ ! -d $DIRALIAS ] ; then
       mkdir -p $DIRALIAS
    fi
+
+   if [ ! -d $DIRCALENDAR ] ; then
+      mkdir -p $DIRCALENDAR
+   fi
+
+   if [ ! -d $DIRCONTACTS ] ; then
+      mkdir -p $DIRCONTACTS
+   fi
+
+   if [ ! -d $DIRSIGNATURE ] ; then
+      mkdir -p $DIRSIGNATURE
+   fi
+
+   if [ ! -d $DIRRULES ] ; then
+      mkdir -p $DIRRULES
+   fi
 }
 
 function validate_user
