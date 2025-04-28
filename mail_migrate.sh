@@ -519,6 +519,7 @@ function import_account
       log_info "Domain: ${i}"
       if [[ $(echo "${list_domain}" | grep "$i") ]] ; then
          log_info "Domain exists..."
+         log_info "Setting Protocol and Port..."
          ${ZMPROV} md $i zimbraPublicServiceProtocol https
          ${ZMPROV} md $i zimbraPublicServicePort 443
          ${ZMPROV} md $i zimbraPrefTimeZoneId "America/Bogota"
@@ -527,6 +528,7 @@ function import_account
       provi=`${ZMPROV} cd $i zimbraAuthMech zimbra`
       log_info "${provi}"
 
+      log_info "Setting Protocol and Port..."
       ${ZMPROV} md $i zimbraPublicServiceProtocol https
       ${ZMPROV} md $i zimbraPublicServicePort 443
       ${ZMPROV} md $i zimbraPrefTimeZoneId "America/Bogota"
@@ -643,7 +645,7 @@ function import_mailbox
    fi
 
    log_info "Reseting value timeout during the migration period"
-   zmlocalconfig -e socket_so_timeout=3000000
+   zmlocalconfig -e socket_so_timeout=30000
 
    zmprov mcf zimbraReverseProxyUpstreamReadTimeout 60s
    zmprov mcf zimbraReverseProxySSLSessionTimeout 10m
