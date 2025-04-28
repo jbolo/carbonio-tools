@@ -713,7 +713,7 @@ function import_signatures
       sig_html=`cat ${DIRREMOTESIGNATURE}/$email"_html.txt"`
 
       log_info "[$count/$q_emails] ${ZMPROV} csig ${email}..."
-      ${ZMPROV} csig $email '$sig_name' zimbraPrefMailSignatureHTML '$sig_html'
+      ${ZMPROV} csig $email "${sig_name}" zimbraPrefMailSignatureHTML "${sig_html}"
 
       log_info "${email} -- finished " ;
    done
