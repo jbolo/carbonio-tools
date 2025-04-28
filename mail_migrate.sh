@@ -743,11 +743,11 @@ function import_rules
       if [ -f $DIRREMOTERULES/$email"_folders.txt" ]; then
          log_info "Folders Rule for ${email} found."
 
-         for folder in `cat $DIRREMOTERULES/$email"_folders.txt"`; do
+         while IFS= read -r folder; do
             log_info "Creating folder: $folder"
             log_info "zmmailbox -z -m $email cf -V message $folder"
             zmmailbox -z -m $email cf -V message "$folder"
-         done
+         done < $DIRREMOTERULES/$email"_folders.txt"
       fi
 
       log_info "${ZMPROV} ma $email zimbraMailSieveScript 'cat ${DIRREMOTERULES}/${email}_rules.txt'"
@@ -775,7 +775,7 @@ function import_dlist
    q_dlist=`wc -l ${DLIST_FILE} | awk '{print $1}'`
    log_info "Total dlist: $q_dlist"
 
-   for listname in `cat ${DLIST_FILE}`; do
+   while IFS= read -r listname; do
       log_info "Importing dlist: $listname"
       log_info "${ZMPROV} cdl $listname..."
       ${ZMPROV} cdl $listname
@@ -784,7 +784,8 @@ function import_dlist
          log_info "${ZMPROV} adlm $listname $email"
          ${ZMPROV} adlm $listname $email
       done
-   done
+   done < ${DLIST_FILE}
+
    end_process "Importing distribution list"
 }
 
