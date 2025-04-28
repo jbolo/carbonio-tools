@@ -561,7 +561,9 @@ function import_account
       ${ZMPROV} ca $i CHANGEme sn "$sn" cn "$cn" displayName "$displayname" givenName "$givenname" zimbraPrefIdentityName "$zimbraprefidentityname"|| log_error "Error creating account $i"; continue
 
       log_info "Updating account password"zimbraprefidentityname
-      ${ZMPROV} ma $i userPassword "$shadowpass"
+      
+      # take care with the password: dollar and quotes
+      ${ZMPROV} ma $i userPassword ${shadowpass}
    done
 
    log_info "List of Accounts:"
