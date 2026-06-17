@@ -133,6 +133,64 @@ function export_mailbox_user
    export_mailbox
 }
 
+function export_mailbox_list
+{
+   local source_file="${1:-}"
+   local emails_file="${DIRBACKUP}/emails_${TODAY_LINE}.txt"
+   local invalid_file="${DIRBACKUP}/invalid_emails_${TODAY_LINE}.txt"
+   local email
+   local total_emails
+
+   if [ -z "$source_file" ]; then
+      log_error "Mailbox list file is required. Usage: $(basename "$0") --export-mailbox-list emails.txt"
+      end_shell 1
+   fi
+
+   if [ ! -f "$source_file" ]; then
+      log_error "Mailbox list file not found: ${source_file}"
+      end_shell 1
+   fi
+
+   begin_process "Preparing mailbox list"
+   awk '
+      {
+         sub(/\r$/, "")
+         sub(/^[[:space:]]+/, "")
+         sub(/[[:space:]]+$/, "")
+      }
+      $0 != "" && $0 !~ /^#/ && !seen[$0]++
+   ' "$source_file" > "$emails_file"
+
+   if [ ! -s "$emails_file" ]; then
+      log_error "Mailbox list file has no valid email lines: ${source_file}"
+      end_shell 1
+   fi
+
+   total_emails=$(count_file_lines "$emails_file")
+   log_info "Mailbox list file: ${source_file}"
+   log_info "Mailbox users selected: ${total_emails}"
+   end_process "Preparing mailbox list"
+
+   begin_process "Validating mailbox list"
+   : > "$invalid_file"
+   while read -r email; do
+      if ! prov -l ga "$email" zimbraAccountStatus >/dev/null 2>&1; then
+         log_error "Mailbox user not found: ${email}"
+         echo "$email" >> "$invalid_file"
+      fi
+   done < "$emails_file"
+
+   if [ -s "$invalid_file" ]; then
+      log_error "Invalid mailbox users found. Review: ${invalid_file}"
+      end_shell 1
+   fi
+
+   del_file "$invalid_file"
+   end_process "Validating mailbox list"
+
+   export_mailbox
+}
+
 function export_dlist
 {
    begin_process "Exporting distribution list"

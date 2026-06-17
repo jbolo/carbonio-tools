@@ -11,6 +11,7 @@ export|--export-incremental|Incremental export using the configured mailbox date
 export|--export-account|Export domains, accounts, passwords and user profile data.|run_export_account
 export|--export-mailbox|Export mailbox TGZ files and mailbox report.|run_export_mailbox
 export|--export-mailbox-user <email>|Export one mailbox TGZ file and mailbox report.|run_export_mailbox_user
+export|--export-mailbox-list <file>|Export mailbox TGZ files from an email list.|run_export_mailbox_list
 export|--export-dlist|Export distribution lists and members.|run_export_dlist
 export|--export-alias|Export account aliases.|run_export_alias
 export|--export-calendar-contacts|Export calendars and contacts.|run_export_calendar_contacts
@@ -150,6 +151,15 @@ function run_export_mailbox_user
    begin_shell
    delete_old_export
    export_mailbox_user "${2:-}"
+   end_shell
+}
+
+function run_export_mailbox_list
+{
+   set_context "$1"
+   begin_shell
+   delete_old_export
+   export_mailbox_list "${2:-}"
    end_shell
 }
 
