@@ -12,7 +12,7 @@ asistente.chef@swisslim.com.pe
 andrea.abanto@swisslim.com.pe
 cyane.rodriguez@swisslim.com.pe
 claudia.herrera@swisslim.com.pe
-marcia.bazans@swisslim.com.pe
+marcia.bazan@swisslim.com.pe
 martin.orellana@swisslim.com.pe
 alejandro.fong@swisslim.com.pe
 angela.gutierrez@swisslim.com.pe
@@ -42,4 +42,4 @@ hotelera.comunicaciones@swisslim.com.pe
 edilbrando.hernandez@swisslim.com.pe
 gabriela.nolasco@swisslim.com.pe
 comunicaciones.swissotel@swisslim.com.pe
-luis.reyes@swisslim.com.pe
+luis.neves@swisslim.com.pe
