@@ -1,6 +1,6 @@
 function print_command
 {
-   printf '  %-28s %s\n' "$1" "$2"
+   printf '  %-34s %s\n' "$1" "$2"
 }
 
 function command_specs
@@ -10,6 +10,7 @@ export|--export|Full export: accounts, lists, aliases, mailboxes, signatures and
 export|--export-incremental|Incremental export using the configured mailbox date window.|run_export_incremental
 export|--export-account|Export domains, accounts, passwords and user profile data.|run_export_account
 export|--export-mailbox|Export mailbox TGZ files and mailbox report.|run_export_mailbox
+export|--export-mailbox-user <email>|Export one mailbox TGZ file and mailbox report.|run_export_mailbox_user
 export|--export-dlist|Export distribution lists and members.|run_export_dlist
 export|--export-alias|Export account aliases.|run_export_alias
 export|--export-calendar-contacts|Export calendars and contacts.|run_export_calendar_contacts
@@ -46,7 +47,7 @@ function usage
 Carbonio/Zimbra migration and backup utility.
 
 Usage:
-  $(basename "$0") <command>
+  $(basename "$0") <command> [args]
 
 Export commands:
 EOF
@@ -72,7 +73,7 @@ function get_command_handler
    local handler
 
    while IFS='|' read -r spec_group command description handler; do
-      if [ "$command" = "$requested_command" ]; then
+      if [ "${command%% *}" = "$requested_command" ]; then
          echo "$handler"
          return 0
       fi
@@ -93,7 +94,7 @@ function dispatch_command
       exit 1
    fi
 
-   "$handler" "$command"
+   "$handler" "$@"
 }
 
 function run_export_incremental
@@ -140,6 +141,15 @@ function run_export_mailbox
    begin_shell
    delete_old_export
    export_mailbox
+   end_shell
+}
+
+function run_export_mailbox_user
+{
+   set_context "$1"
+   begin_shell
+   delete_old_export
+   export_mailbox_user "${2:-}"
    end_shell
 }
 

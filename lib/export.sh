@@ -110,6 +110,29 @@ function export_mailbox
    end_process "Exporting mailbox"
 }
 
+function export_mailbox_user
+{
+   local email="${1:-}"
+   local emails_file="${DIRBACKUP}/emails_${TODAY_LINE}.txt"
+
+   if [ -z "$email" ]; then
+      log_error "Mailbox user is required. Usage: $(basename "$0") --export-mailbox-user user@example.com"
+      end_shell 1
+   fi
+
+   begin_process "Validating mailbox user"
+   if ! prov -l ga "$email" zimbraAccountStatus >/dev/null 2>&1; then
+      log_error "Mailbox user not found: ${email}"
+      end_shell 1
+   fi
+
+   echo "$email" > "$emails_file"
+   log_info "Using mailbox user: ${email}"
+   end_process "Validating mailbox user"
+
+   export_mailbox
+}
+
 function export_dlist
 {
    begin_process "Exporting distribution list"
@@ -283,4 +306,3 @@ function export_rules
 
    end_process "Exporting rules"
 }
-

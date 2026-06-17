@@ -46,4 +46,4 @@ if [[ "$1" == "--help" || "$1" == "-h" ]]; then
    exit
 fi
 
-dispatch_command "$1"
+dispatch_command "$@"
