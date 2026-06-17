@@ -141,8 +141,11 @@ function export_mailbox_list
    local emails_file="${DIRBACKUP}/emails_${TODAY_LINE}.txt"
    local invalid_file="${DIRBACKUP}/invalid_emails_${TODAY_LINE}.txt"
    local all_accounts_file="${DIRBACKUP}/accounts_${TODAY_LINE}.txt"
+   local valid_file="${DIRBACKUP}/valid_emails_${TODAY_LINE}.txt"
    local email
    local total_emails
+   local valid_emails
+   local invalid_emails
 
    if [ -z "$source_file" ]; then
       log_error "Mailbox list file is required. Usage: $(basename "$0") --export-mailbox-list emails.txt"
@@ -178,19 +181,32 @@ function export_mailbox_list
    write_all_accounts "$all_accounts_file"
    log_info "Account catalog loaded: ${all_accounts_file}"
    : > "$invalid_file"
+   : > "$valid_file"
    while read -r email; do
       if ! grep -Fxq "$email" "$all_accounts_file" && ! prov -l ga "$email" zimbraAccountStatus >/dev/null 2>&1; then
-         log_error "Mailbox user not found: ${email}"
+         log_warn "Mailbox user not found, skipping: ${email}"
          echo "$email" >> "$invalid_file"
+         continue
       fi
+
+      echo "$email" >> "$valid_file"
    done < "$emails_file"
 
-   if [ -s "$invalid_file" ]; then
-      log_error "Invalid mailbox users found. Review: ${invalid_file}"
+   if [ ! -s "$valid_file" ]; then
+      log_error "No valid mailbox users found. Review: ${invalid_file}"
       end_shell 1
    fi
 
-   del_file "$invalid_file"
+   if [ -s "$invalid_file" ]; then
+      invalid_emails=$(count_file_lines "$invalid_file")
+      log_warn "Invalid mailbox users skipped: ${invalid_emails}. Review: ${invalid_file}"
+   else
+      del_file "$invalid_file"
+   fi
+
+   mv "$valid_file" "$emails_file"
+   valid_emails=$(count_file_lines "$emails_file")
+   log_info "Valid mailbox users to export: ${valid_emails}"
    end_process "Validating mailbox list"
 
    export_mailbox
