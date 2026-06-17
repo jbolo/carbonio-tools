@@ -87,17 +87,22 @@ function get_status_server
 function get_list_emails
 {
    EMAILS_FILE="${1:-}"
+   local domain_arg="${DOMAIN:-}"
    if [ -z "$EMAILS_FILE" ]; then
       echo "Filename empty"
       exit 1
    fi
 
    begin_process "Getting emails"
-   log_info "${ZMPROV} -l gaa ${DOMAIN} > ${EMAILS_FILE}"
-   prov -l gaa "${DOMAIN}"  | grep -E -v "^(spam|ham|galsync|virus|zextras)" > "${EMAILS_FILE}"
+   if [ -n "$domain_arg" ]; then
+      log_info "${ZMPROV} -l gaa ${domain_arg} > ${EMAILS_FILE}"
+      prov -l gaa "$domain_arg" | awk '!/^(spam|ham|galsync|virus|zextras)/' > "${EMAILS_FILE}"
+   else
+      log_info "${ZMPROV} -l gaa > ${EMAILS_FILE}"
+      prov -l gaa | awk '!/^(spam|ham|galsync|virus|zextras)/' > "${EMAILS_FILE}"
+   fi
    cat "${EMAILS_FILE}"
    q_emails=$(count_file_lines "$EMAILS_FILE")
    log_info "Total emails: $q_emails"
    end_process "Getting emails"
 }
-

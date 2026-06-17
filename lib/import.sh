@@ -107,7 +107,11 @@ function import_account
    done < "$REMOTE_EMAILS_FILE"
 
    log_info "List of Accounts:"
-   list_acc=$(prov -l gaa -v "${DOMAIN}" | grep -e displayName || true)
+   if [ -n "${DOMAIN:-}" ]; then
+      list_acc=$(prov -l gaa -v "${DOMAIN}" | grep -e displayName || true)
+   else
+      list_acc=$(prov -l gaa -v | grep -e displayName || true)
+   fi
    log_info "${list_acc}"
    end_process "Provisiong accounts"
 }
@@ -398,4 +402,3 @@ function import_alias
    done < <(find "$DIRREMOTEALIAS" -maxdepth 1 -type f -printf "%f\n" | sort)
    end_process "Importing alias"
 }
-

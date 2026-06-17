@@ -6,7 +6,7 @@ function export_account
    log_info "${ZMPROV} -l gad > domains_${TODAY_LINE}.txt"
    prov -l gad > "${DIRBACKUP}/domains_${TODAY_LINE}.txt"
 
-   if [[ ! "${DOMAIN}" == "" ]]; then
+   if [[ "${DOMAIN:-}" != "" ]]; then
       if ! grep -Fxq "${DOMAIN}" "${DIRBACKUP}/domains_${TODAY_LINE}.txt"; then
          log_error "Domain ${DOMAIN} not exist."
          end_shell 1

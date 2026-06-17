@@ -52,6 +52,7 @@ function begin_shell
 
 function end_shell
 {
+   trap - INT TERM EXIT ERR
    last_date=$(date +"%Y%m%d%H%M%S")
 
    if [[ "${1:-0}" != "0" && "${1:-}" != "" ]] ; then
