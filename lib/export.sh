@@ -114,6 +114,7 @@ function export_mailbox_user
 {
    local email="${1:-}"
    local emails_file="${DIRBACKUP}/emails_${TODAY_LINE}.txt"
+   local all_accounts_file="${DIRBACKUP}/accounts_${TODAY_LINE}.txt"
 
    if [ -z "$email" ]; then
       log_error "Mailbox user is required. Usage: $(basename "$0") --export-mailbox-user user@example.com"
@@ -121,7 +122,8 @@ function export_mailbox_user
    fi
 
    begin_process "Validating mailbox user"
-   if ! prov -l ga "$email" zimbraAccountStatus >/dev/null 2>&1; then
+   write_all_accounts "$all_accounts_file"
+   if ! grep -Fxq "$email" "$all_accounts_file" && ! prov -l ga "$email" zimbraAccountStatus >/dev/null 2>&1; then
       log_error "Mailbox user not found: ${email}"
       end_shell 1
    fi
@@ -138,6 +140,7 @@ function export_mailbox_list
    local source_file="${1:-}"
    local emails_file="${DIRBACKUP}/emails_${TODAY_LINE}.txt"
    local invalid_file="${DIRBACKUP}/invalid_emails_${TODAY_LINE}.txt"
+   local all_accounts_file="${DIRBACKUP}/accounts_${TODAY_LINE}.txt"
    local email
    local total_emails
 
@@ -172,9 +175,11 @@ function export_mailbox_list
    end_process "Preparing mailbox list"
 
    begin_process "Validating mailbox list"
+   write_all_accounts "$all_accounts_file"
+   log_info "Account catalog loaded: ${all_accounts_file}"
    : > "$invalid_file"
    while read -r email; do
-      if ! prov -l ga "$email" zimbraAccountStatus >/dev/null 2>&1; then
+      if ! grep -Fxq "$email" "$all_accounts_file" && ! prov -l ga "$email" zimbraAccountStatus >/dev/null 2>&1; then
          log_error "Mailbox user not found: ${email}"
          echo "$email" >> "$invalid_file"
       fi

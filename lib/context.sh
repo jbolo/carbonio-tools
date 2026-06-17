@@ -106,3 +106,20 @@ function get_list_emails
    log_info "Total emails: $q_emails"
    end_process "Getting emails"
 }
+
+function write_all_accounts
+{
+   local output_file="${1:-}"
+   local domain_arg="${DOMAIN:-}"
+
+   if [ -z "$output_file" ]; then
+      log_error "Output file is required for account list."
+      end_shell 1
+   fi
+
+   if [ -n "$domain_arg" ]; then
+      prov -l gaa "$domain_arg" | awk 'NF' > "$output_file"
+   else
+      prov -l gaa | awk 'NF' > "$output_file"
+   fi
+}
