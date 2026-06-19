@@ -38,7 +38,11 @@ function export_account
       fi
       count=$((count + 1))
       log_info "[$count/$q_emails] ${ZMPROV} -l ga ${i} userPassword..."
-      prov -l ga "${i}" userPassword | grep userPassword: | awk '{print $2}' > "${DIRUSERPASS}/${i}.shadow" || true
+      if ! prov -l ga "${i}" userPassword | awk '/userPassword:/ {print $2}' > "${DIRUSERPASS}/${i}.shadow"; then
+         log_warn "User password hash not exported for ${i}"
+         del_file "${DIRUSERPASS}/${i}.shadow"
+         continue
+      fi
    done < "$EMAILS_FILE"
 
    end_process "Exporting users and password"
@@ -54,7 +58,11 @@ function export_account
       fi
       count=$((count + 1))
       log_info "[$count/$q_emails] ${ZMPROV} ga ${i}..."
-      prov ga "${i}" | grep -E "^(cn:|sn:|displayName:|givenName:|zimbraPrefIdentityName:)" > "${DIRUSERDATA}/${i}.txt" || true
+      if ! prov ga "${i}" | awk '/^(cn:|sn:|displayName:|givenName:|zimbraPrefIdentityName:)/' > "${DIRUSERDATA}/${i}.txt"; then
+         log_warn "User data not exported for ${i}"
+         del_file "${DIRUSERDATA}/${i}.txt"
+         continue
+      fi
    done < "$EMAILS_FILE"
 
    end_process "Exporting usersdata"
@@ -238,19 +246,38 @@ function complete_mailbox_list_backup
 
 function export_dlist
 {
+   local dlist_errors_file="${DIRBACKUP}/dlist_errors_${TODAY_LINE}.txt"
+   local dlist_output_file
+   local dlist_error_file
+
    begin_process "Exporting distribution list"
    DLIST_FILE="${DIRBACKUP}/dlist_${TODAY_LINE}.txt"
    log_info "${ZMPROV} gadl > $DLIST_FILE"
    prov gadl > "$DLIST_FILE"
    cat "$DLIST_FILE"
+   : > "$dlist_errors_file"
 
    while read -r listname; do
       if [ -z "$listname" ]; then
          continue
       fi
+      dlist_output_file="${DIRDLIST}/$listname.txt"
+      dlist_error_file="${DIRDLIST}/$listname.err"
       log_info "${ZMPROV} gdlm $listname > ${DIRDLIST}/$listname.txt..."
-      prov gdlm "$listname" > "${DIRDLIST}/$listname.txt" ;
+      if ! prov gdlm "$listname" > "$dlist_output_file" 2>"$dlist_error_file"; then
+         log_warn "Distribution list members not exported: ${listname}. Review: ${dlist_error_file}"
+         echo "$listname" >> "$dlist_errors_file"
+         del_file "$dlist_output_file"
+         continue
+      fi
+      del_file "$dlist_error_file"
    done < "$DLIST_FILE"
+
+   if [ -s "$dlist_errors_file" ]; then
+      log_warn "Some distribution lists failed. Review: ${dlist_errors_file}"
+   else
+      del_file "$dlist_errors_file"
+   fi
    end_process "Exporting distribution list"
 }
 
@@ -273,7 +300,11 @@ function export_alias
       fi
       count=$((count + 1))
       log_info "[$count/$q_emails] ${ZMPROV} ga $email | grep zimbraMailAlias > ${DIRALIAS}/$email.txt..." ;
-      prov ga "$email" zimbraMailAlias | grep zimbraMailAlias | awk '{print $2}' > "${DIRALIAS}/$email.txt" || log_info "zimbraMailAlias No ubicado" ;
+      if ! prov ga "$email" zimbraMailAlias | awk '/zimbraMailAlias/ {print $2}' > "${DIRALIAS}/$email.txt"; then
+         log_warn "Alias not exported for ${email}"
+         del_file "${DIRALIAS}/$email.txt"
+         continue
+      fi
       if [ ! -s "${DIRALIAS}/$email.txt" ]; then
          del_file "${DIRALIAS}/$email.txt"
       fi
@@ -307,11 +338,20 @@ function export_calendar_contacts
       fi
       count=$((count + 1))
       log_info "[$count/$q_emails] ${ZMMAILBOX} -z -m ${email}.../Calendar/?fmt=tgz" ;
-      mailbox -z -m "${email}" -t 0 getRestURL '/Calendar/?fmt=tgz' > "${DIRCALENDAR}/$email.tgz" ;
+      if ! mailbox -z -m "${email}" -t 0 getRestURL '/Calendar/?fmt=tgz' > "${DIRCALENDAR}/$email.tgz"; then
+         log_warn "Calendar not exported for ${email}"
+         del_file "${DIRCALENDAR}/$email.tgz"
+      fi
 
       log_info "[$count/$q_emails] ${ZMMAILBOX} -z -m ${email}.../Contacts/?fmt=tgz" ;
-      mailbox -z -m "${email}" -t 0 getRestURL '/Contacts/?fmt=tgz' > "${DIRCONTACTS}/$email.tgz" ;
-      mailbox -z -m "${email}" -t 0 getRestURL '/Emailed Contacts/?fmt=tgz' > "${DIRCONTACTS}/emailed_$email.tgz" ;
+      if ! mailbox -z -m "${email}" -t 0 getRestURL '/Contacts/?fmt=tgz' > "${DIRCONTACTS}/$email.tgz"; then
+         log_warn "Contacts not exported for ${email}"
+         del_file "${DIRCONTACTS}/$email.tgz"
+      fi
+      if ! mailbox -z -m "${email}" -t 0 getRestURL '/Emailed Contacts/?fmt=tgz' > "${DIRCONTACTS}/emailed_$email.tgz"; then
+         log_warn "Emailed Contacts not exported for ${email}"
+         del_file "${DIRCONTACTS}/emailed_$email.tgz"
+      fi
       log_info "${email} -- finished " ;
    done < "$EMAILS_FILE"
 
@@ -340,7 +380,11 @@ function export_signatures
       count=$((count + 1))
 
       log_info "[$count/$q_emails] ${ZMPROV} ga $email zimbraSignatureName > ${DIRSIGNATURE}/${email}_name.txt..." ;
-      prov ga "$email" zimbraSignatureName | grep zimbraSignatureName | awk '{print $2}' > "${DIRSIGNATURE}/${email}_name.txt" || true
+      if ! prov ga "$email" zimbraSignatureName | awk '/zimbraSignatureName/ {print $2}' > "${DIRSIGNATURE}/${email}_name.txt"; then
+         log_warn "Signature name not exported for ${email}"
+         del_file "${DIRSIGNATURE}/${email}_name.txt"
+         continue
+      fi
 
       if [ ! -s "${DIRSIGNATURE}/${email}_name.txt" ]; then
          log_info "Signature for ${email} not found."
@@ -350,7 +394,10 @@ function export_signatures
       fi
 
       log_info "[$count/$q_emails] ${ZMPROV} ga $email zimbraPrefMailSignatureHTML > ${DIRSIGNATURE}/${email}_html.txt..." ;
-      prov ga "$email" zimbraPrefMailSignatureHTML | awk '/^zimbraPrefMailSignatureHTML:/ {flag=1} flag {print}' | sed 's/^zimbraPrefMailSignatureHTML: //' > "${DIRSIGNATURE}/${email}_html.txt"
+      if ! prov ga "$email" zimbraPrefMailSignatureHTML | awk '/^zimbraPrefMailSignatureHTML:/ {flag=1} flag {print}' | sed 's/^zimbraPrefMailSignatureHTML: //' > "${DIRSIGNATURE}/${email}_html.txt"; then
+         log_warn "Signature HTML not exported for ${email}"
+         del_file "${DIRSIGNATURE}/${email}_html.txt"
+      fi
       log_info "${email} -- finished " ;
    done < "$EMAILS_FILE"
 
@@ -379,7 +426,11 @@ function export_rules
       count=$((count + 1))
       
       log_info "[$count/$q_emails] ${ZMPROV} ga $email zimbraMailSieveScript > ${DIRRULES}/${email}_rules.txt..." ;
-      prov ga "$email" zimbraMailSieveScript > "${DIRRULES}/${email}_rules.txt"
+      if ! prov ga "$email" zimbraMailSieveScript > "${DIRRULES}/${email}_rules.txt"; then
+         log_warn "Rules not exported for ${email}"
+         del_file "${DIRRULES}/${email}_rules.txt"
+         continue
+      fi
 
       sed -i -e "1d" "${DIRRULES}/${email}_rules.txt"
       sed -i -e 's/zimbraMailSieveScript: //g' "${DIRRULES}/${email}_rules.txt"
