@@ -5,3 +5,4 @@ log/
 *.tmp
 .restic-r2.env
 *.env
+.restic-cache/
