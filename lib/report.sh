@@ -111,15 +111,27 @@ function count_mailbox_user
       log_info "Analizing account: ${j}"
       total=0;
 
+      if ! folder_sizes=$(mailbox -z -m "$j" gaf 2>/dev/null | awk '{print $4}' | grep -E -o "[0-9]+" || true); then
+         log_warn "Mailbox folder list not available for ${j}"
+         folder_sizes=""
+      fi
+
       while read -r i; do
          if [ -z "$i" ]; then
             continue
          fi
          total=$((total + i ));
-      done < <(mailbox -z -m "$j" gaf | awk '{print $4}' | grep -E -o "[0-9]+" || true)
+      done <<< "$folder_sizes"
 
-      size=$(mailbox -z -m "$j" gms)
-      account_data=$(prov -l ga "$j" zimbraAccountStatus zimbraLastLogonTimestamp zimbraCreateTimestamp zimbraPasswordModifiedTime zimbraMailHost zimbraMailQuota zimbraIsAdminAccount 2>/dev/null || true)
+      if ! size=$(mailbox -z -m "$j" gms 2>/dev/null); then
+         log_warn "Mailbox size not available for ${j}"
+         size="UNKNOWN"
+      fi
+
+      if ! account_data=$(prov -l ga "$j" zimbraAccountStatus zimbraLastLogonTimestamp zimbraCreateTimestamp zimbraPasswordModifiedTime zimbraMailHost zimbraMailQuota zimbraIsAdminAccount 2>/dev/null); then
+         log_warn "Account attributes not available for ${j}"
+         account_data=""
+      fi
       account_status=$(get_account_attr "$account_data" "zimbraAccountStatus" "UNKNOWN")
       last_login_raw=$(get_account_attr "$account_data" "zimbraLastLogonTimestamp" "")
       created_raw=$(get_account_attr "$account_data" "zimbraCreateTimestamp" "")
@@ -145,4 +157,3 @@ function count_mailbox_user
 
    end_process "Getting mailbox user details"
 }
-
