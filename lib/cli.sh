@@ -11,7 +11,7 @@ export|--export-incremental|Incremental export using the configured mailbox date
 export|--export-account|Export domains, accounts, passwords and user profile data.|run_export_account
 export|--export-mailbox|Export mailbox TGZ files and mailbox report.|run_export_mailbox
 export|--export-mailbox-user <email>|Export one mailbox TGZ file and mailbox report.|run_export_mailbox_user
-export|--export-mailbox-list <file>|Export mailbox TGZ files from an email list.|run_export_mailbox_list
+export|--export-mailbox-list <file>|Full scoped export from an email list.|run_export_mailbox_list
 export|--export-dlist|Export distribution lists and members.|run_export_dlist
 export|--export-alias|Export account aliases.|run_export_alias
 export|--export-calendar-contacts|Export calendars and contacts.|run_export_calendar_contacts
@@ -24,6 +24,7 @@ import|--import-alias|Import account aliases.|run_import_alias
 import|--import-calendar-contacts|Import calendars and contacts.|run_import_calendar_contacts
 operation|--transfer|Transfer the latest backup directory with rsync.|run_transfer
 operation|--status|Show server status and mailbox/account report.|run_status
+operation|--complete-mailbox-list-backup <backup_dir> <file>|Complete a scoped backup without regenerating existing TGZ files.|run_complete_mailbox_list_backup
 EOF
 }
 
@@ -160,6 +161,14 @@ function run_export_mailbox_list
    begin_shell
    delete_old_export
    export_mailbox_list "${2:-}"
+   end_shell
+}
+
+function run_complete_mailbox_list_backup
+{
+   set_context "$1"
+   begin_shell
+   complete_mailbox_list_backup "${2:-}" "${3:-}"
    end_shell
 }
 

@@ -19,7 +19,13 @@ function export_account
    #################################################
 
    EMAILS_FILE="${DIRBACKUP}/emails_${TODAY_LINE}.txt"
-   get_list_emails "${EMAILS_FILE}"
+   if [ ! -f "$EMAILS_FILE" ]; then
+      get_list_emails "${EMAILS_FILE}"
+   else
+      q_emails=$(count_file_lines "$EMAILS_FILE")
+      log_info "Using existing email list: ${EMAILS_FILE}"
+      log_info "Total emails: $q_emails"
+   fi
 
    #################################################
 
@@ -76,6 +82,10 @@ function export_mailbox
             continue
          fi
          count=$((count + 1))
+         if [ -s "${DIRMAILBOX}/${email}.tgz" ]; then
+            log_info "[$count/$q_emails] Skipping existing mailbox backup: ${DIRMAILBOX}/${email}.tgz"
+            continue
+         fi
          log_info "[$count/$q_emails] ${ZMMAILBOX} -z -m ${email} -t 0 getRestURL '/?fmt=tgz' > ${DIRMAILBOX}/${email}.tgz" ;
          mailbox -z -m "${email}" -t 0 getRestURL '/?fmt=tgz' > "${DIRMAILBOX}/${email}.tgz" &
          N_PROC_PARALLEL=$(get_parallel_limit)
@@ -209,7 +219,21 @@ function export_mailbox_list
    log_info "Valid mailbox users to export: ${valid_emails}"
    end_process "Validating mailbox list"
 
+   export_account
+   export_dlist
    export_mailbox
+   export_alias
+   export_signatures
+   export_rules
+}
+
+function complete_mailbox_list_backup
+{
+   local backup_dir="${1:-}"
+   local source_file="${2:-}"
+
+   set_existing_backup_context "$backup_dir"
+   export_mailbox_list "$source_file"
 }
 
 function export_dlist

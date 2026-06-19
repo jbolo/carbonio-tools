@@ -35,6 +35,10 @@ function set_context
 
    validate_user "$USER_APP"
 
+   if [[ "$action" == *"complete"* ]] ; then
+      return 0
+   fi
+
    if [[ "$action" == *"import"* ]] ; then
       validate_remote_files
       return 0
@@ -71,6 +75,47 @@ function ensure_dirs
          mkdir -p "$dir"
       fi
    done
+}
+
+function set_existing_backup_context
+{
+   local backup_dir="${1:-}"
+   local backup_name
+   local backup_date
+
+   if [ -z "$backup_dir" ]; then
+      log_error "Backup directory is required."
+      end_shell 1
+   fi
+
+   if [ ! -d "$backup_dir" ]; then
+      log_error "Backup directory not found: ${backup_dir}"
+      end_shell 1
+   fi
+
+   backup_dir=$(readlink -f "$backup_dir")
+   backup_name=$(basename "$backup_dir")
+   backup_date="${backup_name##*_}"
+
+   if [[ ! "$backup_name" =~ ^backup_full_[0-9]{14}$ ]]; then
+      log_error "Backup directory must look like backup_full_YYYYMMDDHHMMSS: ${backup_name}"
+      end_shell 1
+   fi
+
+   export TYPEB="full"
+   export TODAY_LINE="$backup_date"
+   export DIRBACKUP="$backup_dir"
+   export DIRMAILBOX="${DIRBACKUP}/mailbox_${TODAY_LINE}"
+   export DIRUSERPASS="${DIRBACKUP}/userpass_${TODAY_LINE}"
+   export DIRUSERDATA="${DIRBACKUP}/userdata_${TODAY_LINE}"
+   export DIRDLIST="${DIRBACKUP}/dlist_${TODAY_LINE}"
+   export DIRALIAS="${DIRBACKUP}/alias_${TODAY_LINE}"
+   export DIRCALENDAR="${DIRBACKUP}/calendar_${TODAY_LINE}"
+   export DIRCONTACTS="${DIRBACKUP}/contacts_${TODAY_LINE}"
+   export DIRSIGNATURE="${DIRBACKUP}/user_signature_${TODAY_LINE}"
+   export DIRRULES="${DIRBACKUP}/rules_${TODAY_LINE}"
+
+   ensure_dirs "$DIRBACKUP" "$DIRUSERPASS" "$DIRUSERDATA" "$DIRMAILBOX" "$DIRDLIST" "$DIRALIAS" "$DIRCALENDAR" "$DIRCONTACTS" "$DIRSIGNATURE" "$DIRRULES"
 }
 
 function get_status_server
