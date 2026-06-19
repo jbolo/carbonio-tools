@@ -1,0 +1,5 @@
+.varset
+backup_*/
+log/
+*.log
+*.tmp

@@ -145,6 +145,88 @@ El comando reutiliza el backup existente, reconstruye contexto por fecha y compl
 Skipping existing mailbox backup: ...
 ```
 
+## Backup offsite con Restic y Cloudflare R2
+
+Los scripts en `scripts/` permiten ejecutar export Carbonio y luego subir snapshots Restic a un bucket S3-compatible como Cloudflare R2.
+
+No guardar credenciales en el repositorio. Crear el archivo de entorno fuera de Git, por ejemplo como usuario `zextras`:
+
+```bash
+mkdir -p ~/.config/restic
+chmod 700 ~/.config/restic
+nano ~/.config/restic/r2.env
+chmod 600 ~/.config/restic/r2.env
+```
+
+Contenido esperado:
+
+```bash
+export RESTIC_REPOSITORY="s3:https://<ACCOUNT_ID>.r2.cloudflarestorage.com/<BUCKET>"
+export AWS_ACCESS_KEY_ID="<R2_ACCESS_KEY_ID>"
+export AWS_SECRET_ACCESS_KEY="<R2_SECRET_ACCESS_KEY>"
+export RESTIC_PASSWORD="<CLAVE_LARGA_RESTIC>"
+export RESTIC_COMPRESSION=max
+```
+
+Inicializar el repositorio una sola vez:
+
+```bash
+source ~/.config/restic/r2.env
+restic init
+```
+
+Ejecutar full manual:
+
+```bash
+./scripts/backup-full-r2.sh
+```
+
+Ejecutar incremental manual:
+
+```bash
+./scripts/backup-incremental-r2.sh
+```
+
+Los logs quedan en:
+
+```text
+log/restic_full_YYYY-MM-DD_HHMMSS.log
+log/restic_incremental_YYYY-MM-DD_HHMMSS.log
+```
+
+Cron sugerido como usuario `zextras`:
+
+```cron
+# Full semanal domingo 01:00
+0 1 * * 0 /opt/carbonio-tools/scripts/backup-full-r2.sh
+
+# Incremental lunes a sabado 02:00
+0 2 * * 1-6 /opt/carbonio-tools/scripts/backup-incremental-r2.sh
+```
+
+Los scripts usan lock files en `/tmp` para evitar ejecuciones simultaneas.
+
+Para correr una verificacion Restic despues de cada backup:
+
+```bash
+RESTIC_RUN_CHECK=1 ./scripts/backup-full-r2.sh
+```
+
+Retencion sugerida:
+
+```bash
+source ~/.config/restic/r2.env
+restic forget --tag carbonio --keep-daily 14 --keep-weekly 8 --keep-monthly 12 --prune
+```
+
+Antes de borrar backups locales, confirmar que existe snapshot remoto:
+
+```bash
+source ~/.config/restic/r2.env
+restic snapshots --tag carbonio
+restic check
+```
+
 ## Criterios de error
 
 Errores criticos que deben abortar:
@@ -181,6 +263,7 @@ lib/backup.sh            Limpieza de backups antiguos
 lib/transfer.sh          Transferencia por rsync
 lib/logging.sh           Logging, traps, notificaciones y jobs
 mailbox_groups/          Tandas operativas por peso
+scripts/                 Wrappers operativos para Restic/R2
 ```
 
 ## Validacion local

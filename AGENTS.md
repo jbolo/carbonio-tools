@@ -19,6 +19,7 @@ El servidor operativo principal observado usa Carbonio con usuario `zextras`, ru
 ## Reglas criticas
 
 - No abrir ni imprimir `.varset` salvo que el usuario lo pida explicitamente. Puede contener credenciales.
+- No versionar ni imprimir archivos de credenciales Restic/R2, por ejemplo `~/.config/restic/r2.env`.
 - No borrar `backup_*`, `log/` ni archivos no trackeados sin confirmacion explicita.
 - No usar `git reset --hard` ni limpiezas destructivas para resolver pulls en servidor.
 - Si el usuario quiere traer cambios remotos y conservar backups/logs, usar `git restore` solo sobre archivos trackeados o `git stash`; no tocar `??`.
@@ -41,6 +42,7 @@ lib/backup.sh            Limpieza de backups antiguos
 lib/transfer.sh          Transferencia por rsync
 lib/logging.sh           Logging, traps, notificaciones y jobs
 mailbox_groups/          Tandas operativas por peso
+scripts/                 Wrappers operativos para Restic/R2
 ```
 
 ## CLI
@@ -177,6 +179,24 @@ git pull --ff-only
 ```
 
 Los `?? backup_*` y `?? log/` se mantienen si solo se usa `git restore` sobre archivos trackeados.
+
+## Restic/R2
+
+Los scripts versionados para offsite backup son:
+
+```text
+scripts/backup-full-r2.sh
+scripts/backup-incremental-r2.sh
+```
+
+Reglas:
+
+- Los scripts deben tomar secretos desde `RESTIC_ENV_FILE`, por defecto `~/.config/restic/r2.env`.
+- No hardcodear `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `RESTIC_PASSWORD` ni endpoints privados en archivos versionados.
+- El full puede respaldar todo `APP_DIR` porque es el punto base completo.
+- El incremental debe respaldar `backup_incremental` y archivos operativos versionados (`lib/`, `scripts/`, `README.md`, `AGENTS.md`, etc.) para que cambios de herramienta queden en snapshots sin reescanear todos los TGZ full.
+- No ejecutar `restic forget --prune` automaticamente dentro del full/incremental salvo que el usuario lo pida; documentarlo como tarea separada.
+- Antes de recomendar borrar backups locales, pedir confirmar `restic snapshots` y `restic check`.
 
 ## Estilo
 
