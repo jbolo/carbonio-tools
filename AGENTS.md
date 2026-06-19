@@ -187,6 +187,7 @@ Los scripts versionados para offsite backup son:
 ```text
 scripts/backup-full-r2.sh
 scripts/backup-incremental-r2.sh
+scripts/restic-retention-r2.sh
 ```
 
 Reglas:
@@ -195,7 +196,7 @@ Reglas:
 - No hardcodear `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `RESTIC_PASSWORD` ni endpoints privados en archivos versionados.
 - El full puede respaldar todo `APP_DIR` porque es el punto base completo.
 - El incremental debe respaldar `backup_incremental` y archivos operativos versionados (`lib/`, `scripts/`, `README.md`, `AGENTS.md`, etc.) para que cambios de herramienta queden en snapshots sin reescanear todos los TGZ full.
-- No ejecutar `restic forget --prune` automaticamente dentro del full/incremental salvo que el usuario lo pida; documentarlo como tarea separada.
+- No ejecutar `restic forget --prune` automaticamente dentro del full/incremental; usar `scripts/restic-retention-r2.sh` como tarea separada.
 - Antes de recomendar borrar backups locales, pedir confirmar `restic snapshots` y `restic check`.
 
 ## Estilo

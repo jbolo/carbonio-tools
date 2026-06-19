@@ -3,3 +3,5 @@ backup_*/
 log/
 *.log
 *.tmp
+.restic-r2.env
+*.env

@@ -215,8 +215,21 @@ RESTIC_RUN_CHECK=1 ./scripts/backup-full-r2.sh
 Retencion sugerida:
 
 ```bash
-source ~/.config/restic/r2.env
-restic forget --tag carbonio --keep-daily 14 --keep-weekly 8 --keep-monthly 12 --prune
+./scripts/restic-retention-r2.sh
+```
+
+Por defecto conserva:
+
+```text
+14 diarios
+8 semanales
+12 mensuales
+```
+
+Se puede ajustar por variables de entorno:
+
+```bash
+KEEP_DAILY=21 KEEP_WEEKLY=12 KEEP_MONTHLY=18 ./scripts/restic-retention-r2.sh
 ```
 
 Antes de borrar backups locales, confirmar que existe snapshot remoto:
