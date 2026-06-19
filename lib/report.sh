@@ -91,6 +91,10 @@ function count_mailbox_user
 {
    EMAILS_FILE="${1:-}"
    REPORT_FILE="${2:-}"
+   local folder_output folder_sizes account_data size
+   local account_status last_login_raw created_raw password_modified_raw mail_host quota_bytes is_admin
+   local last_login days_since_last_login created days_since_created password_modified quota_mb
+   local j i total LINE_RESUME
 
    if [ ! -f "$EMAILS_FILE" ]; then
       # file not exists
@@ -108,19 +112,20 @@ function count_mailbox_user
          continue
       fi
 
-      log_info "Analizing account: ${j}"
+      log_info "Analyzing account: ${j}"
       total=0;
 
-      if ! folder_sizes=$(mailbox -z -m "$j" gaf 2>/dev/null | awk '{print $4}' | grep -E -o "[0-9]+" || true); then
+      if ! folder_output=$(mailbox -z -m "$j" gaf 2>/dev/null); then
          log_warn "Mailbox folder list not available for ${j}"
-         folder_sizes=""
+         folder_output=""
       fi
+      folder_sizes=$(awk '{print $4}' <<< "$folder_output" | grep -E -o "[0-9]+" || true)
 
       while read -r i; do
          if [ -z "$i" ]; then
             continue
          fi
-         total=$((total + i ));
+         total=$((total + 10#$i));
       done <<< "$folder_sizes"
 
       if ! size=$(mailbox -z -m "$j" gms 2>/dev/null); then
