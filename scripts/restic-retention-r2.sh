@@ -11,6 +11,8 @@ LOG_FILE="${LOG_DIR}/restic_retention_${TODAY}_$(date +%H%M%S).log"
 KEEP_DAILY="${KEEP_DAILY:-14}"
 KEEP_WEEKLY="${KEEP_WEEKLY:-8}"
 KEEP_MONTHLY="${KEEP_MONTHLY:-12}"
+KEEP_WITHIN="${KEEP_WITHIN:-}"
+RESTIC_DRY_RUN="${RESTIC_DRY_RUN:-0}"
 
 mkdir -p "$LOG_DIR"
 
@@ -34,12 +36,27 @@ fi
 
    command -v restic >/dev/null
 
-   restic forget \
-      --tag carbonio \
-      --keep-daily "$KEEP_DAILY" \
-      --keep-weekly "$KEEP_WEEKLY" \
-      --keep-monthly "$KEEP_MONTHLY" \
-      --prune
+   forget_args=(--tag carbonio)
+   if [ -n "$KEEP_WITHIN" ]; then
+      echo "Retention policy: keep snapshots within ${KEEP_WITHIN}"
+      forget_args+=(--keep-within "$KEEP_WITHIN")
+   else
+      echo "Retention policy: keep ${KEEP_DAILY} daily, ${KEEP_WEEKLY} weekly, ${KEEP_MONTHLY} monthly snapshots"
+      forget_args+=(
+         --keep-daily "$KEEP_DAILY"
+         --keep-weekly "$KEEP_WEEKLY"
+         --keep-monthly "$KEEP_MONTHLY"
+      )
+   fi
+
+   if [ "$RESTIC_DRY_RUN" = "1" ]; then
+      echo "Running retention in dry-run mode"
+      forget_args+=(--dry-run)
+   else
+      forget_args+=(--prune)
+   fi
+
+   restic forget "${forget_args[@]}"
 
    restic snapshots --tag carbonio
 

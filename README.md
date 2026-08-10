@@ -232,6 +232,18 @@ Se puede ajustar por variables de entorno:
 KEEP_DAILY=21 KEEP_WEEKLY=12 KEEP_MONTHLY=18 ./scripts/restic-retention-r2.sh
 ```
 
+Para una retencion estricta por ventana de tiempo, por ejemplo conservar solo snapshots dentro de los ultimos 14 dias respecto al snapshot mas reciente:
+
+```bash
+KEEP_WITHIN=14d ./scripts/restic-retention-r2.sh
+```
+
+Antes de borrar, se puede simular la politica sin eliminar snapshots ni ejecutar prune:
+
+```bash
+RESTIC_DRY_RUN=1 KEEP_WITHIN=14d ./scripts/restic-retention-r2.sh
+```
+
 Antes de borrar backups locales, confirmar que existe snapshot remoto:
 
 ```bash
