@@ -18,6 +18,7 @@ fi
 
 . "$ENV_FILE"
 
+BACKUP_BASE_DIR="${BACKUP_BASE_DIR:-$DIRAPP}"
 DIRLOG="${DIRAPP}/log"
 TODAY_LINE=$(date '+%Y%m%d%H%M%S')
 LOGFILE="${DIRLOG}/carbonio_mailops_${TODAY_LINE}.log"

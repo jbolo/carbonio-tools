@@ -5,8 +5,9 @@ function delete_old_export
    fi
 
    begin_process "Deleting old exports"
-   log_info "find ${DIRAPP} -maxdepth 1 -name \"backup_full_*\" -type d -mtime +${DELETE_OLD_EXPORT_DAYS}"
-   find "$DIRAPP" -maxdepth 1 -name "backup_full_*" -type d -mtime +"${DELETE_OLD_EXPORT_DAYS}" -print >> "$LOGFILE"
-   find "$DIRAPP" -maxdepth 1 -name "backup_full_*" -type d -mtime +"${DELETE_OLD_EXPORT_DAYS}" -exec rm -rf "{}" \; >> "$LOGFILE"
+   BACKUP_BASE_DIR="${BACKUP_BASE_DIR:-$DIRAPP}"
+   log_info "find ${BACKUP_BASE_DIR} -maxdepth 1 -name \"backup_full_*\" -type d -mtime +${DELETE_OLD_EXPORT_DAYS}"
+   find "$BACKUP_BASE_DIR" -maxdepth 1 -name "backup_full_*" -type d -mtime +"${DELETE_OLD_EXPORT_DAYS}" -print >> "$LOGFILE"
+   find "$BACKUP_BASE_DIR" -maxdepth 1 -name "backup_full_*" -type d -mtime +"${DELETE_OLD_EXPORT_DAYS}" -exec rm -rf "{}" \; >> "$LOGFILE"
    end_process "Deleting old exports"
 }

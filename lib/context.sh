@@ -2,12 +2,13 @@ function set_context
 {
    local action="${1:-}"
 
+   BACKUP_BASE_DIR="${BACKUP_BASE_DIR:-$DIRAPP}"
    export TYPEB="full"
-   export DIRBACKUP="${DIRAPP}/backup_${TYPEB}_${TODAY_LINE}"
+   export DIRBACKUP="${BACKUP_BASE_DIR}/backup_${TYPEB}_${TODAY_LINE}"
    export DIRMAILBOX="${DIRBACKUP}/mailbox_${TODAY_LINE}"
    if [[ "$action" == *"incremental"* ]] ; then
       export TYPEB="incremental"
-      export DIRBACKUP="${DIRAPP}/backup_${TYPEB}"
+      export DIRBACKUP="${BACKUP_BASE_DIR}/backup_${TYPEB}"
       export DIRMAILBOX="${DIRBACKUP}/mailbox"
    fi
 
@@ -86,6 +87,11 @@ function set_existing_backup_context
    if [ -z "$backup_dir" ]; then
       log_error "Backup directory is required."
       end_shell 1
+   fi
+
+   BACKUP_BASE_DIR="${BACKUP_BASE_DIR:-$DIRAPP}"
+   if [ ! -d "$backup_dir" ] && [ -d "${BACKUP_BASE_DIR}/${backup_dir}" ]; then
+      backup_dir="${BACKUP_BASE_DIR}/${backup_dir}"
    fi
 
    if [ ! -d "$backup_dir" ]; then

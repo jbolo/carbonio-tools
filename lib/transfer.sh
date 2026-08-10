@@ -5,7 +5,8 @@ function transfer_data
    fi
    begin_process "Transfering backup to remote server"
    if [ "${1:-}" = "" ] ; then
-      DIR_BACKUP_WORK=$(find "$DIRAPP" -maxdepth 1 -type d -name "backup_*" -printf "%T@ %p\n" | sort -n | tail -2 | head -1 | awk '{print $2}')
+      BACKUP_BASE_DIR="${BACKUP_BASE_DIR:-$DIRAPP}"
+      DIR_BACKUP_WORK=$(find "$BACKUP_BASE_DIR" -maxdepth 1 -type d -name "backup_*" -printf "%T@ %p\n" | sort -n | tail -2 | head -1 | awk '{print $2}')
    else
       DIR_BACKUP_WORK=$1
    fi
@@ -24,4 +25,3 @@ function transfer_data
    fi
    end_process "Transfering backup to remote server"
 }
-

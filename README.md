@@ -101,6 +101,37 @@ La estrategia usada fue balancear por peso total aproximado, no por cantidad de 
 
 ## Estructura generada por backup
 
+Por defecto los comandos manuales escriben en la carpeta del proyecto para mantener compatibilidad. En servidores con Restic/R2 se recomienda separar codigo y datos:
+
+```text
+/opt/carbonio-tools/              herramienta
+/var/backups/carbonio-mailops/    backup_full_* y backup_incremental
+~/.config/restic/r2.env           credenciales Restic/R2
+```
+
+Para usar otra base de datos:
+
+```bash
+BACKUP_BASE_DIR=/var/backups/carbonio-mailops ./carbonio-mailops.sh --export
+```
+
+Para migrar un servidor que ya tiene backups dentro de `/opt/carbonio-tools`:
+
+```bash
+mkdir -p /var/backups/carbonio-mailops
+mv /opt/carbonio-tools/backup_full_* /var/backups/carbonio-mailops/
+mv /opt/carbonio-tools/backup_incremental /var/backups/carbonio-mailops/
+```
+
+Si el archivo de entorno Restic quedo dentro del proyecto, moverlo fuera del repositorio sin imprimir su contenido:
+
+```bash
+mkdir -p ~/.config/restic
+chmod 700 ~/.config/restic
+mv /opt/carbonio-tools/.restic-r2.env ~/.config/restic/r2.env
+chmod 600 ~/.config/restic/r2.env
+```
+
 Un backup full puede contener:
 
 ```text
@@ -149,6 +180,13 @@ Skipping existing mailbox backup: ...
 
 Los scripts en `scripts/` permiten ejecutar export Carbonio y luego subir snapshots Restic a un bucket S3-compatible como Cloudflare R2.
 
+Los scripts Restic usan por defecto:
+
+```text
+BACKUP_BASE_DIR=/var/backups/carbonio-mailops
+RESTIC_ENV_FILE=~/.config/restic/r2.env
+```
+
 No guardar credenciales en el repositorio. Crear el archivo de entorno fuera de Git, por ejemplo como usuario `zextras`:
 
 ```bash
@@ -181,11 +219,15 @@ Ejecutar full manual:
 ./scripts/backup-full-r2.sh
 ```
 
+El full genera un `backup_full_*` en `BACKUP_BASE_DIR` y sube a Restic solo ese full nuevo mas los archivos operativos versionados (`lib/`, `scripts/`, `README.md`, etc.). No respalda todo `/opt/carbonio-tools`.
+
 Ejecutar incremental manual:
 
 ```bash
 ./scripts/backup-incremental-r2.sh
 ```
+
+El incremental genera/actualiza `BACKUP_BASE_DIR/backup_incremental` y sube esa carpeta mas los archivos operativos versionados.
 
 Los logs quedan en:
 
@@ -198,13 +240,31 @@ Cron sugerido como usuario `zextras`:
 
 ```cron
 # Full semanal domingo 01:00
-0 1 * * 0 /opt/carbonio-tools/scripts/backup-full-r2.sh
+0 1 * * 0 BACKUP_BASE_DIR=/var/backups/carbonio-mailops /opt/carbonio-tools/scripts/backup-full-r2.sh
 
 # Incremental lunes a sabado 02:00
-0 2 * * 1-6 /opt/carbonio-tools/scripts/backup-incremental-r2.sh
+0 2 * * 1-6 BACKUP_BASE_DIR=/var/backups/carbonio-mailops /opt/carbonio-tools/scripts/backup-incremental-r2.sh
 ```
 
 Los scripts usan lock files en `/tmp` para evitar ejecuciones simultaneas.
+
+Si el repositorio R2 debe mantenerse pequeno, limpiar backups locales antes de subir el snapshot remoto.
+
+Ejemplo para conservar solo backups locales recientes antes de subir:
+
+```cron
+# Full semanal: borra backup_full_* locales con mas de 7 dias antes de exportar/subir el nuevo full
+0 1 * * 0 BACKUP_BASE_DIR=/var/backups/carbonio-mailops LOCAL_FULL_KEEP_DAYS=7 LOCAL_INCREMENTAL_KEEP_DAYS=7 /opt/carbonio-tools/scripts/backup-full-r2.sh
+
+# Incremental diario: borra archivos incrementales locales con mas de 7 dias antes de exportar/subir
+0 2 * * 1-6 BACKUP_BASE_DIR=/var/backups/carbonio-mailops LOCAL_INCREMENTAL_KEEP_DAYS=7 /opt/carbonio-tools/scripts/backup-incremental-r2.sh
+```
+
+Para ver que se borraria localmente sin eliminar archivos:
+
+```bash
+BACKUP_BASE_DIR=/var/backups/carbonio-mailops LOCAL_CLEANUP_DRY_RUN=1 LOCAL_FULL_KEEP_DAYS=7 LOCAL_INCREMENTAL_KEEP_DAYS=7 ./scripts/backup-full-r2.sh
+```
 
 Para correr una verificacion Restic despues de cada backup:
 
